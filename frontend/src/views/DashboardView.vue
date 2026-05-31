@@ -9,7 +9,7 @@
       <nav class="library-nav">
         <button class="nav-item active">文献库管理</button>
         <button class="nav-item">学术 AI（预留）</button>
-        <button class="nav-item">引用助手（预留）</button>
+        <button class="nav-item" @click="goCitations">引用助手</button>
       </nav>
 
       <section class="folder-section">
@@ -144,6 +144,7 @@
             <h3>{{ paper.title }}</h3>
             <p class="paper-authors">作者：{{ paper.authors || "未知" }}</p>
             <p class="paper-source">来源：{{ paper.conference || "未填写" }}</p>
+            <p class="paper-source">引用信息：{{ hasCitationMetadata(paper) ? "已识别" : "待补全" }}</p>
             <p class="paper-source">分组：{{ getFolderNameById(paper.folder_id) }}</p>
           </div>
 
@@ -153,6 +154,7 @@
             @click.stop
           >
             <button @click="showPaperInfo(paper)">信息</button>
+            <button @click="onExtractCitationMetadata(paper)">补全引用信息</button>
             <button @click="openMovePopover(paper.id, 'card')">移动至文件夹</button>
             <button @click="onEditPaper(paper)">编辑</button>
             <button class="danger" @click="onDeletePaper(paper.id)">删除</button>
@@ -226,6 +228,7 @@
                   @click.stop
                 >
                   <button @click="showPaperInfo(paper)">信息</button>
+                  <button @click="onExtractCitationMetadata(paper)">补全引用信息</button>
                   <button @click="openMovePopover(paper.id, 'list')">移动至文件夹</button>
                   <button @click="onEditPaper(paper)">编辑</button>
                   <button class="danger" @click="onDeletePaper(paper.id)">删除</button>
@@ -368,6 +371,7 @@ import {
   createPaper,
   deleteFolder,
   deletePaper,
+  extractPaperCitationMetadata,
   fetchFolders,
   fetchPapers,
   updateFolder,
@@ -410,7 +414,9 @@ const selectedPdfFile = ref(null);
 const uploadingPdf = ref(false);
 const uploadedFileUrl = ref("");
 const uploadedFileName = ref("");
+const uploadedCitationMetadata = ref({});
 const fileInputKey = ref(0);
+const citationParsingId = ref("");
 
 const modal = reactive({
   open: false,
@@ -677,6 +683,16 @@ async function onUploadPdf() {
     const result = await uploadPaperPdf(selectedPdfFile.value);
     uploadedFileUrl.value = result.relative_url || result.file_url;
     uploadedFileName.value = result.file_name;
+    uploadedCitationMetadata.value = result.citation_metadata || result.citationMetadata || {};
+    if (uploadedCitationMetadata.value.title && !paperForm.title.trim()) {
+      paperForm.title = uploadedCitationMetadata.value.title;
+    }
+    if (Array.isArray(uploadedCitationMetadata.value.authors) && !paperForm.authors.trim()) {
+      paperForm.authors = uploadedCitationMetadata.value.authors.join(", ");
+    }
+    if (uploadedCitationMetadata.value.venue && !paperForm.conference.trim()) {
+      paperForm.conference = uploadedCitationMetadata.value.venue;
+    }
   } catch (error) {
     modal.open = true;
     modal.type = "notice";
@@ -699,6 +715,7 @@ async function onCreatePaper() {
   await createPaper({
     ...paperForm,
     file_url: uploadedFileUrl.value,
+    citationMetadata: uploadedCitationMetadata.value,
     folder_id: selectedFolderId.value || null
   });
 
@@ -710,6 +727,7 @@ async function onCreatePaper() {
   selectedPdfFile.value = null;
   uploadedFileUrl.value = "";
   uploadedFileName.value = "";
+  uploadedCitationMetadata.value = {};
   fileInputKey.value += 1;
 
   await loadPapers();
@@ -719,6 +737,19 @@ function getFolderNameById(folderId) {
   if (!folderId) return "未分组";
   const folder = folders.value.find((item) => item.id === folderId);
   return folder ? folder.name : "未分组";
+}
+
+function hasCitationMetadata(paper) {
+  const metadata = paper?.citationMetadata || {};
+  return Boolean(
+    metadata.title ||
+      metadata.authors?.length ||
+      metadata.year ||
+      metadata.venue ||
+      metadata.doi ||
+      metadata.arxivId ||
+      metadata.citationText
+  );
 }
 
 function getFilteredFolders() {
@@ -809,6 +840,27 @@ async function onDeletePaper(paperId) {
   modal.payload = paperId;
 }
 
+async function onExtractCitationMetadata(paper) {
+  if (!paper?.id || citationParsingId.value) return;
+  openPaperMenuId.value = "";
+  citationParsingId.value = paper.id;
+  try {
+    await extractPaperCitationMetadata(paper.id);
+    await loadPapers();
+    modal.open = true;
+    modal.type = "notice";
+    modal.title = "引用信息已补全";
+    modal.message = "系统已从 PDF 前几页尝试识别标题、作者、年份、来源、DOI 或 arXiv 信息。";
+  } catch (error) {
+    modal.open = true;
+    modal.type = "notice";
+    modal.title = "补全失败";
+    modal.message = error?.response?.data?.error || "无法解析该 PDF 的引用信息，请稍后重试或手动编辑。";
+  } finally {
+    citationParsingId.value = "";
+  }
+}
+
 function closeModal() {
   modal.open = false;
   modal.type = "";
@@ -862,6 +914,10 @@ async function submitEditPaper() {
 
 function goReader(id) {
   router.push({ name: "reader", params: { id } });
+}
+
+function goCitations() {
+  router.push({ name: "citations" });
 }
 
 function formatDate(value) {

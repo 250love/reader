@@ -110,6 +110,29 @@ Config switches:
     - `OCR_LAYOUT_USE_GPU=false`
 - OCR and agent search stub endpoints (for future implementation)
 
+## 引用助手功能
+
+引用助手用于把已导入文献生成可复制的引用文本。用户可以从文献库中选择一篇或多篇文献，选择引用格式后一次生成带编号的引用结果，每条引用都会带有 `[1]`、`[2]`、`[3]` 这样的编号。
+
+支持的引用格式：
+- GB/T 7714
+- APA
+- IEEE
+
+基本使用步骤：
+1. 在文献库中导入论文 PDF。
+2. 进入“引用助手”页面。
+3. 勾选需要生成引用的一篇或多篇文献。
+4. 选择引用格式（GB/T 7714、APA 或 IEEE）。
+5. 点击“生成引用”。
+6. 使用“复制单条引用”或“复制全部引用”复制结果。
+
+PDF 元数据解析：
+- 上传 PDF 后，后端会尝试读取 PDF 前几页文本，并提取标题、作者、年份、来源等引用元数据。
+- 中文论文会尝试识别“题目：”“作者：”“引用格式：”等信息。
+- 英文论文会尝试识别首页标题、作者、DOI、arXiv 编号和年份。
+- 引用生成时会优先使用 PDF 自动解析出的元数据；如果解析失败或字段缺失，则回退使用用户手动填写的标题、作者、来源等信息。
+
 ## 6. Notes
 
 - The backend now serializes nested Mongo `ObjectId` safely, fixing `ObjectId is not JSON serializable`.

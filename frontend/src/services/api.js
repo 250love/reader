@@ -88,6 +88,26 @@ export async function fetchPaperById(id) {
   return data;
 }
 
+export async function generatePaperCitations(payload) {
+  const { data } = await api.post("/papers/citations", payload);
+  return data;
+}
+
+export async function fetchPaperCitationMetadata(id) {
+  const { data } = await api.get(`/papers/${id}/citation-metadata`);
+  return data.citationMetadata || {};
+}
+
+export async function extractPaperCitationMetadata(id) {
+  const { data } = await api.post(`/papers/${id}/citation-metadata/extract`);
+  return data.citationMetadata || {};
+}
+
+export async function updatePaperCitationMetadata(id, citationMetadata) {
+  const { data } = await api.patch(`/papers/${id}/citation-metadata`, { citationMetadata });
+  return data.citationMetadata || {};
+}
+
 export async function markPaperOpened(id) {
   const { data } = await api.post(`/papers/${id}/open`);
   return data;

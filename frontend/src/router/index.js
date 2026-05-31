@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import AuthView from "@/views/AuthView.vue";
+import CitationAssistantView from "@/views/CitationAssistantView.vue";
 import DashboardView from "@/views/DashboardView.vue";
 import ReaderView from "@/views/ReaderView.vue";
 import SettingsView from "@/views/SettingsView.vue";
@@ -15,6 +16,12 @@ const router = createRouter({
       redirect: () => (isAuthed() ? "/dashboard" : "/auth")
     },
     { path: "/dashboard", name: "dashboard", component: DashboardView, meta: { requiresAuth: true } },
+    {
+      path: "/citations",
+      name: "citations",
+      component: CitationAssistantView,
+      meta: { requiresAuth: true }
+    },
     {
       path: "/reader/:id",
       name: "reader",

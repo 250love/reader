@@ -9,6 +9,7 @@
       <div class="top-nav-actions">
         <nav>
           <RouterLink :to="{ name: 'dashboard' }">论文管理</RouterLink>
+          <RouterLink :to="{ name: 'citations' }">引用助手</RouterLink>
         </nav>
 
         <div class="user-entry-wrap" ref="menuRootRef">

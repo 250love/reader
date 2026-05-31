@@ -16,12 +16,216 @@ from app.services.figure_extractor import (
     extract_visual_regions,
     resolve_local_pdf_path,
 )
+from app.services.citation_metadata import (
+    CITATION_FORMATS as PDF_CITATION_FORMATS,
+    extract_citation_metadata_from_pdf,
+    format_paper_citation,
+    normalize_citation_metadata,
+)
 from app.services.translation_provider import translate_text
 from app.utils.object_id import mongo_doc_to_json, parse_object_id
 
 papers_bp = Blueprint("papers", __name__)
 ALLOWED_PDF_EXTENSIONS = {".pdf"}
 HIGHLIGHT_COLORS = {"yellow", "pink", "green", "blue", "purple"}
+CITATION_FORMATS = {"gbt7714", "apa", "ieee"}
+
+
+def _split_authors(authors: str) -> list[str]:
+    raw = str(authors or "").strip()
+    if not raw:
+        return []
+
+    normalized = raw
+    for old, new in [
+        ("；", ";"),
+        ("，", ","),
+        ("、", ","),
+        (" and ", ","),
+        (" & ", ","),
+    ]:
+        normalized = normalized.replace(old, new)
+
+    if ";" in normalized:
+        parts = normalized.split(";")
+    else:
+        parts = normalized.split(",")
+    return [part.strip() for part in parts if part.strip()]
+
+
+def _short_authors(authors: str, limit: int, suffix: str) -> str:
+    names = _split_authors(authors)
+    if not names:
+        return "Unknown author"
+    if len(names) > limit:
+        return f"{', '.join(names[:limit])}, {suffix}"
+    return ", ".join(names)
+
+
+def _format_apa_authors(authors: str) -> str:
+    base = _strip_et_al(authors)
+    if base:
+        return f"{base} et al."
+    return _short_authors(authors, 3, "et al.")
+
+
+def _format_gbt_authors(authors: str) -> str:
+    base = _strip_et_al(authors)
+    if base:
+        return f"{base}, 等"
+    return _short_authors(authors, 3, "等")
+
+
+def _to_initial_name(name: str) -> str:
+    clean = str(name or "").strip()
+    if not clean:
+        return ""
+    if any("\u4e00" <= char <= "\u9fff" for char in clean):
+        return clean
+
+    parts = [part for part in clean.replace(".", " ").split() if part]
+    if len(parts) <= 1:
+        return clean
+
+    family = parts[-1]
+    initials = " ".join(f"{part[0].upper()}." for part in parts[:-1] if part)
+    return f"{initials} {family}".strip()
+
+
+def _format_ieee_authors(authors: str) -> str:
+    base = _strip_et_al(authors)
+    if base:
+        return f"{_to_initial_name(base)} et al."
+
+    names = _split_authors(authors)
+    if not names:
+        return "Unknown author"
+    formatted = [_to_initial_name(name) for name in names[:3]]
+    if len(names) > 3:
+        return f"{', '.join(formatted)}, et al."
+    return ", ".join(formatted)
+
+
+def _strip_et_al(authors: str) -> str:
+    import re
+
+    raw = str(authors or "").strip()
+    if not re.search(r"\bet\s+al\.?\b", raw, flags=re.IGNORECASE):
+        return ""
+    return re.sub(r"[,，]?\s*\bet\s+al\.?\b\.?", "", raw, flags=re.IGNORECASE).strip(" ,，;；")
+
+
+def _with_period(value: str) -> str:
+    clean = str(value or "").strip()
+    if not clean:
+        return ""
+    if clean.endswith((".", "!", "?", "。")):
+        return clean
+    return f"{clean}."
+
+
+def _extract_year(paper: dict, source: str) -> str:
+    raw_year = paper.get("year")
+    if raw_year:
+        return str(raw_year).strip()
+
+    import re
+
+    match = re.search(r"\b(19|20)\d{2}\b", source or "")
+    return match.group(0) if match else "n.d."
+
+
+def _extract_volume_issue_pages(source: str) -> tuple[str, str, str]:
+    import re
+
+    text = str(source or "")
+    volume = ""
+    issue = ""
+    pages = ""
+
+    match = re.search(r"(?P<volume>\d+)\s*\(\s*(?P<issue>\d+)\s*\)\s*[:：]\s*(?P<pages>[\w\-–—]+)", text)
+    if match:
+        return match.group("volume"), match.group("issue"), match.group("pages")
+
+    volume_match = re.search(r"\bvol\.?\s*(?P<volume>\d+)", text, flags=re.IGNORECASE)
+    issue_match = re.search(r"\bno\.?\s*(?P<issue>\d+)", text, flags=re.IGNORECASE)
+    page_match = re.search(r"\bpp\.?\s*(?P<pages>[\w\-–—]+)", text, flags=re.IGNORECASE)
+    if volume_match:
+        volume = volume_match.group("volume")
+    if issue_match:
+        issue = issue_match.group("issue")
+    if page_match:
+        pages = page_match.group("pages")
+    return volume, issue, pages
+
+
+def _format_source_tail(source: str, year: str, style: str) -> str:
+    import re
+
+    clean_source = str(source or "").strip()
+    volume, issue, pages = _extract_volume_issue_pages(clean_source)
+    should_append_year = bool(year) and year != "n.d." and not re.search(rf"\b{re.escape(str(year))}\b", clean_source)
+
+    if style == "ieee":
+        parts = []
+        if clean_source:
+            parts.append(clean_source)
+        if volume:
+            parts.append(f"vol. {volume}")
+        if issue:
+            parts.append(f"no. {issue}")
+        if pages:
+            parts.append(f"pp. {pages}")
+        if should_append_year:
+            parts.append(year)
+        return ", ".join(parts)
+
+    if style == "apa":
+        tail = clean_source
+        if volume:
+            tail += f", {volume}"
+            if issue:
+                tail += f"({issue})"
+        if pages:
+            tail += f", {pages}"
+        return tail
+
+    tail = clean_source
+    if should_append_year:
+        tail += f", {year}" if tail else year
+    if volume:
+        tail += f", {volume}"
+        if issue:
+            tail += f"({issue})"
+    if pages:
+        tail += f": {pages}"
+    return tail
+
+
+def _format_citation(paper: dict, citation_format: str, index: int) -> str:
+    title = str(paper.get("title") or "Untitled").strip()
+    source = str(paper.get("conference") or "").strip()
+    year = _extract_year(paper, source)
+
+    if citation_format == "ieee":
+        citation = f"[{index}] {_format_ieee_authors(paper.get('authors', ''))}, \"{title}\""
+        tail = _format_source_tail(source, year, "ieee")
+        if tail:
+            citation += f", {tail}"
+        return _with_period(citation)
+
+    if citation_format == "gbt7714":
+        citation = f"[{index}] {_format_gbt_authors(paper.get('authors', ''))}. {title}[J]"
+        tail = _format_source_tail(source, year, "gbt7714")
+        if tail:
+            citation += f". {tail}"
+        return _with_period(citation)
+
+    citation = f"[{index}] {_format_apa_authors(paper.get('authors', ''))} ({year}). {_with_period(title)}"
+    tail = _format_source_tail(source, year, "apa")
+    if tail:
+        citation += f" {_with_period(tail)}"
+    return citation
 
 
 def _remove_uploaded_file_if_local(file_url: str, user_id: str) -> None:
@@ -177,6 +381,63 @@ def list_papers():
     return {"items": [mongo_doc_to_json(row) for row in rows]}
 
 
+@papers_bp.post("/citations")
+@auth_required
+def generate_citations():
+    payload = request.get_json(silent=True) or {}
+    citation_format = str(payload.get("format") or "apa").strip().lower()
+    paper_ids = payload.get("paper_ids")
+
+    if citation_format not in PDF_CITATION_FORMATS:
+        return {"error": "format must be one of GBT7714,APA,IEEE"}, 400
+    if not isinstance(paper_ids, list) or not paper_ids:
+        return {"error": "paper_ids must be a non-empty list"}, 400
+    if len(paper_ids) > 100:
+        return {"error": "paper_ids can include at most 100 items"}, 400
+
+    parsed_ids = []
+    seen_ids = set()
+    for raw_id in paper_ids:
+        paper_oid = parse_object_id(raw_id)
+        if not paper_oid:
+            return {"error": "paper_ids contains invalid id"}, 400
+        if paper_oid in seen_ids:
+            continue
+        seen_ids.add(paper_oid)
+        parsed_ids.append(paper_oid)
+
+    db = get_db()
+    rows = list(
+        db.papers.find(
+            {
+                "_id": {"$in": parsed_ids},
+                "user_id": g.current_user["_id"],
+            }
+        )
+    )
+    by_id = {row["_id"]: row for row in rows}
+
+    missing_ids = [str(paper_oid) for paper_oid in parsed_ids if paper_oid not in by_id]
+    if missing_ids:
+        return {"error": "some papers were not found", "missing_ids": missing_ids}, 404
+
+    items = []
+    for index, paper_oid in enumerate(parsed_ids, start=1):
+        paper = by_id[paper_oid]
+        items.append(
+            {
+                "paper_id": str(paper_oid),
+                "citation": format_paper_citation(paper, citation_format, index),
+            }
+        )
+
+    return {
+        "format": "GB/T 7714" if citation_format == "gbt7714" else citation_format.upper(),
+        "items": items,
+        "text": "\n".join(item["citation"] for item in items),
+    }
+
+
 @papers_bp.post("/upload")
 @auth_required
 def upload_pdf():
@@ -200,6 +461,7 @@ def upload_pdf():
     saved_name = f"{uuid.uuid4().hex}.pdf"
     save_path = os.path.join(target_dir, saved_name)
     file.save(save_path)
+    citation_metadata = normalize_citation_metadata(extract_citation_metadata_from_pdf(save_path))
 
     relative_url = f"/uploads/{user_folder}/{saved_name}"
     absolute_url = f"{request.host_url.rstrip('/')}{relative_url}"
@@ -208,6 +470,7 @@ def upload_pdf():
         "file_name": original_name,
         "relative_url": relative_url,
         "file_url": absolute_url,
+        "citation_metadata": citation_metadata,
     }
 
 
@@ -242,6 +505,7 @@ def create_paper():
         "authors": payload.get("authors", ""),
         "conference": payload.get("conference", ""),
         "year": payload.get("year"),
+        "citationMetadata": normalize_citation_metadata(payload.get("citationMetadata")),
         "file_url": normalized_file_url or "",
         "folder_id": folder_oid,
         "tags": payload.get("tags", []),
@@ -268,6 +532,75 @@ def get_paper(paper_id: str):
     if not paper:
         return {"error": "paper not found"}, 404
     return mongo_doc_to_json(paper)
+
+
+@papers_bp.get("/<paper_id>/citation-metadata")
+@auth_required
+def get_citation_metadata(paper_id: str):
+    paper_oid = parse_object_id(paper_id)
+    if not paper_oid:
+        return {"error": "paper_id is invalid"}, 400
+
+    db = get_db()
+    paper = db.papers.find_one({"_id": paper_oid, "user_id": g.current_user["_id"]})
+    if not paper:
+        return {"error": "paper not found"}, 404
+    return {"citationMetadata": normalize_citation_metadata(paper.get("citationMetadata"))}
+
+
+@papers_bp.patch("/<paper_id>/citation-metadata")
+@auth_required
+def update_citation_metadata(paper_id: str):
+    paper_oid = parse_object_id(paper_id)
+    if not paper_oid:
+        return {"error": "paper_id is invalid"}, 400
+
+    payload = request.get_json(silent=True) or {}
+    citation_metadata = normalize_citation_metadata(payload.get("citationMetadata") or payload)
+    citation_metadata["source"] = citation_metadata.get("source") or "manual"
+
+    db = get_db()
+    result = db.papers.update_one(
+        {"_id": paper_oid, "user_id": g.current_user["_id"]},
+        {
+            "$set": {
+                "citationMetadata": citation_metadata,
+                "updated_at": datetime.now(UTC),
+            }
+        },
+    )
+    if result.matched_count == 0:
+        return {"error": "paper not found"}, 404
+    return {"citationMetadata": citation_metadata}
+
+
+@papers_bp.post("/<paper_id>/citation-metadata/extract")
+@auth_required
+def extract_citation_metadata(paper_id: str):
+    paper_oid = parse_object_id(paper_id)
+    if not paper_oid:
+        return {"error": "paper_id is invalid"}, 400
+
+    db = get_db()
+    paper = db.papers.find_one({"_id": paper_oid, "user_id": g.current_user["_id"]})
+    if not paper:
+        return {"error": "paper not found"}, 404
+
+    pdf_path = resolve_local_pdf_path(paper.get("file_url", ""), current_app.config["UPLOAD_DIR"])
+    if not pdf_path:
+        return {"error": "only local uploaded pdf can be parsed currently"}, 400
+
+    citation_metadata = normalize_citation_metadata(extract_citation_metadata_from_pdf(pdf_path))
+    db.papers.update_one(
+        {"_id": paper_oid, "user_id": g.current_user["_id"]},
+        {
+            "$set": {
+                "citationMetadata": citation_metadata,
+                "updated_at": datetime.now(UTC),
+            }
+        },
+    )
+    return {"citationMetadata": citation_metadata}
 
 
 @papers_bp.get("/<paper_id>/figures")
@@ -461,6 +794,8 @@ def update_paper(paper_id: str):
     payload = request.get_json(silent=True) or {}
     allowed_fields = {"title", "authors", "conference", "year", "status", "tags", "file_url"}
     updates = {k: v for k, v in payload.items() if k in allowed_fields}
+    if "citationMetadata" in payload:
+        updates["citationMetadata"] = normalize_citation_metadata(payload.get("citationMetadata"))
     if "folder_id" in payload:
         folder_oid = parse_object_id(payload.get("folder_id")) if payload.get("folder_id") else None
         if payload.get("folder_id") and not folder_oid:
