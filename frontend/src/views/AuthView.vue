@@ -1,13 +1,11 @@
 ﻿<template>
-  <section class="auth-page">
-    <div class="aurora aurora-a" />
-    <div class="aurora aurora-b" />
+  <section class="auth-page" :style="{ '--auth-bg-image': `url(${authBackground})` }">
+    <div class="auth-overlay" />
     <div class="auth-wrap">
-      <aside class="auth-hero">
+      <div class="auth-hero">
         <p class="hero-kicker">Paper Reader</p>
         <h2>Read Better. Think Deeper.</h2>
-        <p>Sign in to manage papers, read in dual-pane mode, and configure translation providers.</p>
-      </aside>
+      </div>
 
       <section class="auth-card">
         <div class="tab-row">
@@ -105,6 +103,7 @@
 import { computed, onBeforeUnmount, ref } from "vue";
 import { useRouter } from "vue-router";
 
+import authBackground from "@/assets/auth-background.jpg";
 import { login, recommendPassword, register, sendRegisterCode } from "@/services/api";
 import { setAuth } from "@/services/auth";
 
@@ -274,69 +273,74 @@ onBeforeUnmount(() => {
 <style scoped>
 .auth-page {
   position: relative;
-  min-height: 86vh;
+  min-height: 100vh;
   display: grid;
   place-items: center;
+  padding: 2rem 1rem;
   overflow: hidden;
+  background-image: var(--auth-bg-image);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  isolation: isolate;
 }
 
-.aurora {
+.auth-page::before {
+  content: "";
   position: absolute;
-  border-radius: 999px;
-  filter: blur(18px);
-  opacity: 0.42;
-  animation: drift 8s ease-in-out infinite;
+  inset: 0;
+  background: inherit;
+  transform: scale(1.02);
+  z-index: -3;
 }
 
-.aurora-a {
-  width: 300px;
-  height: 300px;
-  background: #a8ece2;
-  left: -60px;
-  top: 60px;
-}
-
-.aurora-b {
-  width: 360px;
-  height: 360px;
-  background: #ffd8ba;
-  right: -100px;
-  bottom: -80px;
-  animation-delay: 1.2s;
+.auth-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(7, 14, 24, 0.28), rgba(255, 255, 255, 0.08)),
+    rgba(10, 18, 28, 0.22);
+  z-index: -2;
 }
 
 .auth-wrap {
-  width: min(920px, 94vw);
+  width: min(960px, 94vw);
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 1rem;
-  z-index: 2;
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 430px);
+  align-items: center;
+  gap: 1.25rem;
+  z-index: 1;
 }
 
 .auth-hero {
-  padding: 1.4rem 1.2rem;
+  color: #fff;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.42);
 }
 
 .hero-kicker {
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #466070;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.84);
+  font-weight: 700;
 }
 
 .auth-hero h2 {
   margin: 0.4rem 0 0.6rem;
-  font-size: clamp(1.5rem, 2.6vw, 2.5rem);
+  font-size: clamp(2rem, 5vw, 4.4rem);
   line-height: 1.1;
+  max-width: 8.4em;
 }
 
 .auth-card {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(196, 210, 220, 0.95);
-  border-radius: 18px;
-  padding: 1rem;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 12px 32px rgba(34, 54, 72, 0.12);
+  width: 100%;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 22px;
+  padding: 1.15rem;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 24px 60px rgba(24, 38, 52, 0.24);
 }
 
 .tab-row {
@@ -347,8 +351,8 @@ onBeforeUnmount(() => {
 }
 
 .tab-row button {
-  background: #edf3f6;
-  border-color: #c9d7de;
+  background: rgba(255, 255, 255, 0.64);
+  border-color: rgba(171, 187, 199, 0.72);
   color: #22384a;
 }
 
@@ -364,10 +368,18 @@ onBeforeUnmount(() => {
 }
 
 .auth-form input {
-  border: 1px solid #d5dbe2;
+  border: 1px solid rgba(187, 198, 207, 0.9);
   border-radius: 10px;
   padding: 0.62rem 0.72rem;
   font: inherit;
+  color: #1d2a36;
+  background: rgba(255, 255, 255, 0.88);
+  outline: none;
+}
+
+.auth-form input:focus {
+  border-color: #0f6d64;
+  box-shadow: 0 0 0 3px rgba(15, 109, 100, 0.16);
 }
 
 .code-line,
@@ -378,8 +390,8 @@ onBeforeUnmount(() => {
 }
 
 .strength-panel {
-  border: 1px solid #d8e0e6;
-  background: #f6fafc;
+  border: 1px solid rgba(216, 224, 230, 0.86);
+  background: rgba(246, 250, 252, 0.78);
   border-radius: 12px;
   padding: 0.6rem 0.7rem;
 }
@@ -434,7 +446,7 @@ onBeforeUnmount(() => {
 }
 
 .outline {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.86);
   color: #1f3a4d;
   border-color: #cad7de;
 }
@@ -453,26 +465,35 @@ onBeforeUnmount(() => {
   margin: 0.8rem 0 0;
 }
 
-@keyframes drift {
-  0% {
-    transform: translateY(0) translateX(0);
-  }
-  50% {
-    transform: translateY(14px) translateX(-8px);
-  }
-  100% {
-    transform: translateY(0) translateX(0);
-  }
-}
-
 @media (max-width: 920px) {
   .auth-wrap {
     grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .auth-hero {
+    text-align: center;
+  }
+
+  .auth-hero h2 {
+    max-width: 11em;
+    font-size: clamp(1.8rem, 10vw, 3rem);
   }
 
   .code-line,
   .password-line {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .auth-page {
+    padding: 1.2rem 0.85rem;
+  }
+
+  .auth-card {
+    border-radius: 18px;
+    padding: 0.9rem;
   }
 }
 </style>

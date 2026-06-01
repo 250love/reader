@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'auth-shell': route.name === 'auth' }">
     <header v-if="showTopNav" class="top-nav">
       <div>
         <p class="brand-kicker">Paper Reader Lab</p>
@@ -114,6 +114,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.auth-shell {
+  width: 100%;
+  margin: 0;
+}
+
 .top-nav-actions {
   display: flex;
   align-items: center;
