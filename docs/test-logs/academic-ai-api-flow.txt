@@ -1,0 +1,6 @@
+﻿{
+    "taskCount":  6,
+    "firstTask":  "paper_summary",
+    "runListAccessible":  true,
+    "runCount":  1
+}

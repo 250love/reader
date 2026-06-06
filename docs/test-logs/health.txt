@@ -1,0 +1,9 @@
+﻿PS> Invoke-WebRequest http://localhost:5000/api/v1/health
+StatusCode: 200
+Content: {
+  "mongo_connected": true,
+  "mongo_db_name": "paper_reader",
+  "status": "ok",
+  "timestamp": "2026-06-06T13:46:04.261656+00:00"
+}
+

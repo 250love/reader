@@ -1,0 +1,6 @@
+﻿{
+    "folderCreated":  "system-test-folder",
+    "assignedPaper":  "A Test Paper for Reader System",
+    "assignedFolderId":  "6a2425f3bf0dc02b54d67ee5",
+    "tempPaperDeleted":  true
+}
