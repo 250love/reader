@@ -2313,6 +2313,448 @@ button:disabled {
   color: var(--danger);
 }
 
+:global(html[data-theme="dark"]) .ai-workbench {
+  color: #e8f1fb;
+}
+
+:global(html[data-theme="dark"]) .tool-rail,
+:global(html[data-theme="dark"]) .context-drawer {
+  background: linear-gradient(180deg, #172033 0%, #121a2a 100%) !important;
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34) !important;
+}
+
+:global(html[data-theme="dark"]) .chat-shell {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(94, 234, 212, 0.1), transparent 30%),
+    linear-gradient(180deg, #111827 0%, #0b1220 100%) !important;
+  border-color: rgba(148, 163, 184, 0.34) !important;
+}
+
+:global(html[data-theme="dark"]) .chat-topbar {
+  background: rgba(15, 23, 42, 0.82) !important;
+  border-bottom-color: rgba(148, 163, 184, 0.32) !important;
+}
+
+:global(html[data-theme="dark"]) .message-list {
+  background:
+    radial-gradient(circle at 70% 12%, rgba(94, 234, 212, 0.07), transparent 28%),
+    linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+}
+
+:global(html[data-theme="dark"]) .chat-topbar h2,
+:global(html[data-theme="dark"]) .drawer-head h3,
+:global(html[data-theme="dark"]) .empty-state h3,
+:global(html[data-theme="dark"]) .section-title-row h4,
+:global(html[data-theme="dark"]) .context-options h4,
+:global(html[data-theme="dark"]) .paper-option strong,
+:global(html[data-theme="dark"]) .task-copy strong,
+:global(html[data-theme="dark"]) .field-label,
+:global(html[data-theme="dark"]) .field-label > span,
+:global(html[data-theme="dark"]) .model-status-card strong,
+:global(html[data-theme="dark"]) .history-preview-card strong {
+  color: #f8fafc !important;
+}
+
+:global(html[data-theme="dark"]) .brand-kicker,
+:global(html[data-theme="dark"]) .section-title-row p,
+:global(html[data-theme="dark"]) .empty-state p,
+:global(html[data-theme="dark"]) .paper-option em,
+:global(html[data-theme="dark"]) .paper-option small,
+:global(html[data-theme="dark"]) .task-copy span,
+:global(html[data-theme="dark"]) .task-list button > small,
+:global(html[data-theme="dark"]) .composer-summary,
+:global(html[data-theme="dark"]) .source-item span,
+:global(html[data-theme="dark"]) .history-preview-card p,
+:global(html[data-theme="dark"]) .history-preview-card small {
+  color: #b8c7da !important;
+}
+
+:global(html[data-theme="dark"]) .drawer-head,
+:global(html[data-theme="dark"]) .context-options,
+:global(html[data-theme="dark"]) .composer-wrap {
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
+
+:global(html[data-theme="dark"]) .tool-rail button {
+  color: #d8e4f2 !important;
+}
+
+:global(html[data-theme="dark"]) .tool-rail button:not(.primary):hover,
+:global(html[data-theme="dark"]) .tool-rail button:not(.primary).active {
+  background: rgba(94, 234, 212, 0.15) !important;
+  color: #7ffbea !important;
+}
+
+:global(html[data-theme="dark"]) .tool-rail button.primary {
+  background: linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%) !important;
+  color: #062620 !important;
+}
+
+:global(html[data-theme="dark"]) .drawer-close,
+:global(html[data-theme="dark"]) .archive-open-btn,
+:global(html[data-theme="dark"]) .soft-input,
+:global(html[data-theme="dark"]) .field-label select,
+:global(html[data-theme="dark"]) .context-options label,
+:global(html[data-theme="dark"]) .paper-option,
+:global(html[data-theme="dark"]) .task-list button,
+:global(html[data-theme="dark"]) .model-status-card,
+:global(html[data-theme="dark"]) .history-preview-card,
+:global(html[data-theme="dark"]) .source-item,
+:global(html[data-theme="dark"]) .composer-box,
+:global(html[data-theme="dark"]) .drawer-hero-card {
+  background: rgba(15, 23, 42, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+  color: #e8f1fb !important;
+}
+
+:global(html[data-theme="dark"]) .drawer-hero-card {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(94, 234, 212, 0.18), transparent 44%),
+    rgba(15, 23, 42, 0.9) !important;
+}
+
+:global(html[data-theme="dark"]) .paper-option.selected,
+:global(html[data-theme="dark"]) .task-list button.active,
+:global(html[data-theme="dark"]) .task-list button:hover,
+:global(html[data-theme="dark"]) .history-preview-card.active,
+:global(html[data-theme="dark"]) .history-preview-card:hover,
+:global(html[data-theme="dark"]) .archive-open-btn:hover {
+  background: rgba(20, 184, 166, 0.18) !important;
+  border-color: rgba(94, 234, 212, 0.52) !important;
+  color: #f8fafc !important;
+}
+
+:global(html[data-theme="dark"]) .hero-badge,
+:global(html[data-theme="dark"]) .run-status,
+:global(html[data-theme="dark"]) .task-icon {
+  background: rgba(94, 234, 212, 0.16) !important;
+  border-color: rgba(94, 234, 212, 0.38) !important;
+  color: #7ffbea !important;
+}
+
+:global(html[data-theme="dark"]) .task-list button.active .task-icon {
+  background: #5eead4 !important;
+  color: #042f2e !important;
+}
+
+:global(html[data-theme="dark"]) .message-row.assistant .message-bubble {
+  background: #f8fafc !important;
+  border-color: rgba(203, 213, 225, 0.92) !important;
+  color: #1f2f42 !important;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.26) !important;
+}
+
+:global(html[data-theme="dark"]) .message-row.assistant .message-meta,
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body,
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(p),
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(li),
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(td) {
+  color: #243447 !important;
+}
+
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(strong),
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(h3),
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(h4),
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(h5),
+:global(html[data-theme="dark"]) .message-row.assistant .message-meta span {
+  color: #172233 !important;
+}
+
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(code),
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(.code-block),
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(table) {
+  background: #eef4f8 !important;
+  border-color: #d5e1ea !important;
+  color: #172233 !important;
+}
+
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(th) {
+  background: #e3edf4 !important;
+  color: #172233 !important;
+}
+
+:global(html[data-theme="dark"]) .message-row.assistant .markdown-body :deep(blockquote) {
+  background: #eefbf7 !important;
+  border-left-color: #5eead4 !important;
+  color: #243447 !important;
+}
+
+:global(html[data-theme="dark"]) .composer-wrap {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.42), rgba(15, 23, 42, 0.98) 32%) !important;
+}
+
+:global(html[data-theme="dark"]) .composer-summary span {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #d8e4f2 !important;
+}
+
+:global(html[data-theme="dark"]) .composer-box textarea {
+  color: #f8fafc !important;
+}
+
+:global(html[data-theme="dark"]) .composer-box textarea::placeholder,
+:global(html[data-theme="dark"]) .soft-input::placeholder {
+  color: #93a4b8 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench) {
+  color: #f8fafc !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .brand-kicker),
+:global(html[data-theme="dark"] .ai-workbench .section-title-row p),
+:global(html[data-theme="dark"] .ai-workbench .empty-state p),
+:global(html[data-theme="dark"] .ai-workbench .muted-text),
+:global(html[data-theme="dark"] .ai-workbench .paper-option em),
+:global(html[data-theme="dark"] .ai-workbench .paper-option small),
+:global(html[data-theme="dark"] .ai-workbench .task-copy span),
+:global(html[data-theme="dark"] .ai-workbench .history-preview-card p),
+:global(html[data-theme="dark"] .ai-workbench .history-preview-card small),
+:global(html[data-theme="dark"] .ai-workbench .composer-summary),
+:global(html[data-theme="dark"] .ai-workbench .source-item span) {
+  color: #e2e8f0 !important;
+  opacity: 1 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .chat-topbar h2),
+:global(html[data-theme="dark"] .ai-workbench .drawer-head h3),
+:global(html[data-theme="dark"] .ai-workbench .empty-state h3),
+:global(html[data-theme="dark"] .ai-workbench .section-title-row h4),
+:global(html[data-theme="dark"] .ai-workbench .context-options h4),
+:global(html[data-theme="dark"] .ai-workbench .history-preview-card strong),
+:global(html[data-theme="dark"] .ai-workbench .model-status-card strong),
+:global(html[data-theme="dark"] .ai-workbench .field-label),
+:global(html[data-theme="dark"] .ai-workbench .field-label > span) {
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail button:not(.primary)),
+:global(html[data-theme="dark"] .ai-workbench .drawer-close),
+:global(html[data-theme="dark"] .ai-workbench .archive-open-btn),
+:global(html[data-theme="dark"] .ai-workbench .context-options label),
+:global(html[data-theme="dark"] .ai-workbench .field-label select),
+:global(html[data-theme="dark"] .ai-workbench .soft-input),
+:global(html[data-theme="dark"] .ai-workbench .composer-box textarea) {
+  color: #f8fafc !important;
+  opacity: 1 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .paper-option),
+:global(html[data-theme="dark"] .ai-workbench .task-list button),
+:global(html[data-theme="dark"] .ai-workbench .history-preview-card),
+:global(html[data-theme="dark"] .ai-workbench .drawer-hero-card),
+:global(html[data-theme="dark"] .ai-workbench .model-status-card),
+:global(html[data-theme="dark"] .ai-workbench .context-options label),
+:global(html[data-theme="dark"] .ai-workbench .archive-open-btn) {
+  background: #111c2e !important;
+  border-color: rgba(203, 213, 225, 0.42) !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .paper-option strong),
+:global(html[data-theme="dark"] .ai-workbench .task-copy strong) {
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .paper-option.selected),
+:global(html[data-theme="dark"] .ai-workbench .task-list button.active),
+:global(html[data-theme="dark"] .ai-workbench .task-list button:hover),
+:global(html[data-theme="dark"] .ai-workbench .history-preview-card.active),
+:global(html[data-theme="dark"] .ai-workbench .history-preview-card:hover) {
+  background: #173b3a !important;
+  border-color: #5eead4 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .suggestion-grid button) {
+  background: #ffffff !important;
+  border-color: #d7e2ea !important;
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .suggestion-grid button strong) {
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .suggestion-grid span) {
+  color: #334155 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .composer-summary span) {
+  background: #ffffff !important;
+  border-color: #d7e2ea !important;
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .composer-box) {
+  background: #ffffff !important;
+  border-color: #d7e2ea !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .composer-box textarea) {
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .composer-box textarea::placeholder) {
+  color: #52657a !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .drawer-hero-card) {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(94, 234, 212, 0.2), transparent 44%),
+    #0b1526 !important;
+  border-color: rgba(94, 234, 212, 0.42) !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .drawer-hero-card h4),
+:global(html[data-theme="dark"] .ai-workbench .model-section .drawer-hero-card p) {
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .hero-badge) {
+  background: #ddfff7 !important;
+  border-color: #9af3e1 !important;
+  color: #075e54 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .model-status-card) {
+  background: #0f1c2f !important;
+  border-color: rgba(94, 234, 212, 0.34) !important;
+  color: #f8fafc !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .model-status-card strong) {
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .model-status-card p) {
+  color: #dbeafe !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .model-dot.ready) {
+  background: #2dd4bf !important;
+  box-shadow: 0 0 0 7px rgba(45, 212, 191, 0.18) !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .field-label) {
+  background: #0f1c2f !important;
+  border-color: rgba(203, 213, 225, 0.45) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26) !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .field-label > span) {
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .field-label select) {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #102033 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .field-label select:disabled) {
+  background: #eef4f8 !important;
+  color: #334155 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #334155 !important;
+  cursor: not-allowed;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .model-section .field-label option) {
+  background: #ffffff !important;
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .drawer-close) {
+  background: #0f172a !important;
+  border: 1px solid rgba(226, 232, 240, 0.58) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24) !important;
+  opacity: 1 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .drawer-close:hover) {
+  background: #3f1720 !important;
+  border-color: #fca5a5 !important;
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .archive-dialog .drawer-close) {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .archive-dialog .drawer-close:hover) {
+  background: #fff1f2 !important;
+  border-color: #fda4af !important;
+  color: #9f1239 !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail) {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(94, 234, 212, 0.13), transparent 34%),
+    linear-gradient(180deg, #182234 0%, #101827 100%) !important;
+  border-color: rgba(226, 232, 240, 0.28) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 42px rgba(0, 0, 0, 0.32) !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail button) {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: #d7e4f2 !important;
+  text-shadow: none !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail button span) {
+  color: inherit !important;
+  font-weight: 900;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail button small) {
+  color: inherit !important;
+  opacity: 0.92;
+  font-weight: 800;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail button.primary) {
+  background: linear-gradient(135deg, #5eead4 0%, #2dd4bf 100%) !important;
+  border-color: rgba(153, 246, 228, 0.8) !important;
+  color: #062620 !important;
+  box-shadow: 0 10px 22px rgba(45, 212, 191, 0.26) !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail button.primary:hover) {
+  background: linear-gradient(135deg, #99f6e4 0%, #5eead4 100%) !important;
+  color: #042f2e !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail .rail-nav button:not(.active):hover) {
+  background: rgba(226, 232, 240, 0.08) !important;
+  border-color: rgba(226, 232, 240, 0.22) !important;
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail .rail-nav button.active) {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.45), transparent 48%),
+    #ddfff7 !important;
+  border-color: rgba(153, 246, 228, 0.92) !important;
+  color: #075e54 !important;
+  box-shadow: 0 12px 24px rgba(45, 212, 191, 0.22) !important;
+}
+
+:global(html[data-theme="dark"] .ai-workbench .tool-rail .rail-nav button.active span),
+:global(html[data-theme="dark"] .ai-workbench .tool-rail .rail-nav button.active small) {
+  color: #075e54 !important;
+}
+
 @media (max-width: 1080px) {
   .ai-workbench {
     grid-template-columns: 72px minmax(0, 1fr);

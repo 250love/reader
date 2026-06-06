@@ -1446,6 +1446,124 @@ onBeforeUnmount(() => {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
 }
 
+:global(html[data-theme="dark"] .reader-shell),
+:global(html[data-theme="dark"] .reader-header),
+:global(html[data-theme="dark"] .reader-workspace) {
+  color: #f8fafc !important;
+}
+
+:global(html[data-theme="dark"] .reader-header h2),
+:global(html[data-theme="dark"] .reader-main-toolbar h3),
+:global(html[data-theme="dark"] .notes-pane-head h4),
+:global(html[data-theme="dark"] .translate-pane-head h3) {
+  color: #ffffff !important;
+}
+
+:global(html[data-theme="dark"] .reader-header p),
+:global(html[data-theme="dark"] .reader-main-toolbar .helper-text),
+:global(html[data-theme="dark"] .notes-pane-head span) {
+  color: #e2e8f0 !important;
+  opacity: 1 !important;
+}
+
+:global(html[data-theme="dark"] .reader-notes-pane),
+:global(html[data-theme="dark"] .reader-main-pane),
+:global(html[data-theme="dark"] .reader-translate-pane) {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(94, 234, 212, 0.07), transparent 34%),
+    linear-gradient(180deg, #111827 0%, #0b1220 100%) !important;
+  border-color: rgba(148, 163, 184, 0.36) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34) !important;
+}
+
+:global(html[data-theme="dark"] .reader-main-toolbar),
+:global(html[data-theme="dark"] .notes-pane-head),
+:global(html[data-theme="dark"] .translate-pane-head) {
+  border-color: rgba(226, 232, 240, 0.52) !important;
+}
+
+:global(html[data-theme="dark"] .reader-canvas-wrap) {
+  background: #0b1220 !important;
+  border-color: rgba(226, 232, 240, 0.42) !important;
+}
+
+:global(html[data-theme="dark"] .lang-chip) {
+  background: #ffffff !important;
+  border-color: #d7e2ea !important;
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .lang-chip input) {
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .reader-side-section),
+:global(html[data-theme="dark"] .translate-card),
+:global(html[data-theme="dark"] .figure-card),
+:global(html[data-theme="dark"] .note-card) {
+  background: #ffffff !important;
+  border-color: #d7e2ea !important;
+  color: #102033 !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26) !important;
+}
+
+:global(html[data-theme="dark"] .reader-side-section .translate-pane-head h3),
+:global(html[data-theme="dark"] .reader-side-section .translate-pane-head span),
+:global(html[data-theme="dark"] .translate-card header),
+:global(html[data-theme="dark"] .figure-meta-row),
+:global(html[data-theme="dark"] .note-card header) {
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .reader-side-section .empty-hint),
+:global(html[data-theme="dark"] .reader-side-section .reader-state),
+:global(html[data-theme="dark"] .translate-card .source-text) {
+  color: #334155 !important;
+  opacity: 1 !important;
+}
+
+:global(html[data-theme="dark"] .translate-card .result-text),
+:global(html[data-theme="dark"] .note-card blockquote) {
+  background: #e8fff8 !important;
+  color: #102033 !important;
+  border-color: #5eead4 !important;
+}
+
+:global(html[data-theme="dark"] .note-card textarea),
+:global(html[data-theme="dark"] .figure-meta textarea) {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .figure-preview-btn),
+:global(html[data-theme="dark"] .figure-preview-btn img) {
+  background: #f8fafc !important;
+  border-color: #d7e2ea !important;
+}
+
+:global(html[data-theme="dark"] .figure-notice) {
+  background: #fff3c4 !important;
+  border-color: #f4d36d !important;
+  color: #6b4300 !important;
+}
+
+:global(html[data-theme="dark"] .figure-error),
+:global(html[data-theme="dark"] .reader-state.error) {
+  color: #fecaca !important;
+}
+
+:global(html[data-theme="dark"] .reader-side-section .figure-error) {
+  color: #991b1b !important;
+}
+
+:global(html[data-theme="dark"] .selection-menu) {
+  background: #ffffff !important;
+  border-color: #d7e2ea !important;
+  color: #102033 !important;
+}
+
 @media (max-width: 1480px) {
   .reader-workspace {
     grid-template-columns: minmax(0, 1fr) 500px;

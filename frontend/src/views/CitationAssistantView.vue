@@ -637,6 +637,204 @@ onMounted(loadPapers);
   color: var(--text);
 }
 
+:global(html[data-theme="dark"]) .citation-layout {
+  color: #e8f1fb;
+}
+
+:global(html[data-theme="dark"]) .citation-header h2,
+:global(html[data-theme="dark"]) .panel-head h3 {
+  color: #f8fafc !important;
+}
+
+:global(html[data-theme="dark"]) .citation-header .brand-kicker,
+:global(html[data-theme="dark"]) .citation-header p,
+:global(html[data-theme="dark"]) .panel-head p,
+:global(html[data-theme="dark"]) .empty-hint {
+  color: #b8c7da !important;
+}
+
+:global(html[data-theme="dark"]) .citation-paper-panel,
+:global(html[data-theme="dark"]) .citation-output-panel {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(94, 234, 212, 0.08), transparent 34%),
+    linear-gradient(180deg, #111827 0%, #0b1220 100%) !important;
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  color: #e8f1fb !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32) !important;
+}
+
+:global(html[data-theme="dark"]) .panel-head {
+  border-bottom-color: rgba(148, 163, 184, 0.34) !important;
+}
+
+:global(html[data-theme="dark"]) .format-control {
+  background: rgba(248, 250, 252, 0.96) !important;
+  border-color: rgba(203, 213, 225, 0.9) !important;
+  color: #172233 !important;
+}
+
+:global(html[data-theme="dark"]) .format-control select {
+  color: #172233 !important;
+}
+
+:global(html[data-theme="dark"]) .citation-paper-card {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+  color: #e8f1fb !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+:global(html[data-theme="dark"]) .citation-paper-card.selected {
+  background: rgba(20, 184, 166, 0.18) !important;
+  border-color: rgba(94, 234, 212, 0.58) !important;
+}
+
+:global(html[data-theme="dark"]) .citation-paper-card h4 {
+  color: #f8fafc !important;
+}
+
+:global(html[data-theme="dark"]) .citation-paper-card p,
+:global(html[data-theme="dark"]) .citation-paper-card span {
+  color: #b8c7da !important;
+}
+
+:global(html[data-theme="dark"]) .paper-card-actions .btn-secondary,
+:global(html[data-theme="dark"]) .citation-result-card .btn-secondary {
+  background: rgba(15, 23, 42, 0.96) !important;
+  border-color: rgba(148, 163, 184, 0.38) !important;
+  color: #e8f1fb !important;
+}
+
+:global(html[data-theme="dark"]) .paper-card-actions .btn-secondary:hover,
+:global(html[data-theme="dark"]) .citation-result-card .btn-secondary:hover {
+  background: rgba(94, 234, 212, 0.15) !important;
+  border-color: rgba(94, 234, 212, 0.48) !important;
+  color: #7ffbea !important;
+}
+
+:global(html[data-theme="dark"]) .metadata-pill {
+  background: rgba(251, 191, 36, 0.14) !important;
+  border-color: rgba(251, 191, 36, 0.36) !important;
+  color: #fde68a !important;
+}
+
+:global(html[data-theme="dark"]) .metadata-pill.ready {
+  background: rgba(94, 234, 212, 0.15) !important;
+  border-color: rgba(94, 234, 212, 0.4) !important;
+  color: #7ffbea !important;
+}
+
+:global(html[data-theme="dark"]) .citation-result-card {
+  background: #f8fafc !important;
+  border-color: rgba(203, 213, 225, 0.9) !important;
+  color: #1f2f42 !important;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+:global(html[data-theme="dark"]) .citation-result-card p {
+  color: #243447 !important;
+}
+
+:global(html[data-theme="dark"]) .citation-output-panel textarea {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  color: #e8f1fb !important;
+}
+
+:global(html[data-theme="dark"]) .citation-output-panel textarea::placeholder {
+  color: #93a4b8 !important;
+}
+
+:global(html[data-theme="dark"]) .metadata-editor {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.34) !important;
+}
+
+:global(html[data-theme="dark"]) .metadata-grid label,
+:global(html[data-theme="dark"]) .metadata-citation-text {
+  color: #d8e4f2 !important;
+}
+
+:global(html[data-theme="dark"]) .notice-text {
+  background: rgba(94, 234, 212, 0.14) !important;
+  border-color: rgba(94, 234, 212, 0.4) !important;
+  color: #7ffbea !important;
+}
+
+:global(html[data-theme="dark"] .citation-layout),
+:global(html[data-theme="dark"] .citation-paper-panel),
+:global(html[data-theme="dark"] .citation-output-panel) {
+  color: #f8fafc !important;
+}
+
+:global(html[data-theme="dark"] .citation-header .brand-kicker),
+:global(html[data-theme="dark"] .citation-header p),
+:global(html[data-theme="dark"] .panel-head p),
+:global(html[data-theme="dark"] .empty-hint) {
+  color: #e2e8f0 !important;
+  opacity: 1 !important;
+}
+
+:global(html[data-theme="dark"] .citation-header h2),
+:global(html[data-theme="dark"] .panel-head h3) {
+  color: #ffffff !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
+}
+
+:global(html[data-theme="dark"] .citation-paper-card) {
+  background: #f8fafc !important;
+  border-color: #d7e2ea !important;
+  color: #0f172a !important;
+}
+
+:global(html[data-theme="dark"] .citation-paper-card.selected) {
+  background: #ddfff7 !important;
+  border-color: #5eead4 !important;
+  box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.6), 0 14px 30px rgba(0, 0, 0, 0.26) !important;
+}
+
+:global(html[data-theme="dark"] .citation-paper-card h4),
+:global(html[data-theme="dark"] .citation-paper-card p),
+:global(html[data-theme="dark"] .citation-paper-card span) {
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .citation-paper-card p),
+:global(html[data-theme="dark"] .citation-paper-card span) {
+  opacity: 0.88 !important;
+}
+
+:global(html[data-theme="dark"] .metadata-pill.ready) {
+  background: #d6fbef !important;
+  border-color: #94e8d4 !important;
+  color: #075e54 !important;
+}
+
+:global(html[data-theme="dark"] .metadata-pill) {
+  background: #fff3c4 !important;
+  border-color: #f4d36d !important;
+  color: #6b4300 !important;
+}
+
+:global(html[data-theme="dark"] .citation-result-card),
+:global(html[data-theme="dark"] .citation-output-panel textarea) {
+  background: #ffffff !important;
+  border-color: #d7e2ea !important;
+  color: #102033 !important;
+}
+
+:global(html[data-theme="dark"] .citation-result-card p),
+:global(html[data-theme="dark"] .citation-output-panel textarea) {
+  color: #102033 !important;
+  opacity: 1 !important;
+}
+
+:global(html[data-theme="dark"] .notice-text) {
+  background: #ddfff7 !important;
+  border-color: #5eead4 !important;
+  color: #075e54 !important;
+}
+
 @media (max-width: 980px) {
   .citation-header {
     flex-direction: column;
