@@ -3,8 +3,6 @@
     <div class="help-backdrop" @click.self="emitClose">
       <section class="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
         <aside class="help-sidebar">
-          <button class="help-close help-close-sidebar" aria-label="关闭帮助中心" @click="emitClose">×</button>
-
           <div class="help-sidebar-head">
             <p class="brand-kicker">Guide</p>
             <h2 id="help-title">帮助中心</h2>
@@ -117,7 +115,7 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--surface-soft), var(--bg) 28%);
   padding: 0.85rem;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.78rem;
 }
 
@@ -219,10 +217,6 @@ onBeforeUnmount(() => {
   background: var(--danger-soft);
   border-color: color-mix(in srgb, var(--danger), var(--line) 45%);
   color: var(--danger);
-}
-
-.help-close-sidebar {
-  justify-self: start;
 }
 
 .help-scroll {
@@ -376,7 +370,7 @@ onBeforeUnmount(() => {
   }
 
   .help-sidebar {
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
@@ -390,10 +384,6 @@ onBeforeUnmount(() => {
 
   .help-nav button {
     min-width: 138px;
-  }
-
-  .help-close-sidebar {
-    display: none;
   }
 
   .help-content-head {
