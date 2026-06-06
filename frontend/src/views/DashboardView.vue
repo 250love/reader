@@ -123,8 +123,8 @@
             class="sr-only-input"
             @change="onBatchPicked"
           />
-          <strong>批量导入 PDF</strong>
-          <p>点击选择多个 PDF，或将文件拖拽到这里。批量导入会自动保存到当前文件夹。</p>
+          <strong>导入 PDF</strong>
+          <p>点击选择一个或多个 PDF，或将文件拖拽到这里。导入后会自动保存到当前文件夹。</p>
           <button type="button" class="btn-secondary" :disabled="batchUploading" @click.stop="openBatchPicker">
             选择 PDF 文件
           </button>
@@ -161,18 +161,6 @@
             </button>
           </article>
         </div>
-
-        <div class="single-upload-divider">
-          <span>或单篇上传后手动保存</span>
-        </div>
-
-        <div class="upload-row">
-          <input :key="fileInputKey" type="file" accept="application/pdf,.pdf" @change="onPdfPicked" />
-          <button class="btn-secondary" :disabled="uploadingPdf || !selectedPdfFile" @click="onUploadPdf">
-            {{ uploadingPdf ? "上传中..." : "上传 PDF" }}
-          </button>
-        </div>
-        <p v-if="uploadedFileName" class="upload-tip">已上传：{{ uploadedFileName }}</p>
       </section>
 
       <section v-if="loading" class="card">
@@ -472,12 +460,6 @@ const renamingFolderName = ref("");
 const creatingChildForFolderId = ref("");
 const childFolderName = ref("");
 
-const selectedPdfFile = ref(null);
-const uploadingPdf = ref(false);
-const uploadedFileUrl = ref("");
-const uploadedFileName = ref("");
-const uploadedCitationMetadata = ref({});
-const fileInputKey = ref(0);
 const batchFileInputRef = ref(null);
 const batchItems = ref([]);
 const batchUploading = ref(false);
@@ -739,10 +721,6 @@ async function onDeleteFolder(folder) {
   modal.payload = folder;
 }
 
-function onPdfPicked(event) {
-  selectedPdfFile.value = event.target.files?.[0] || null;
-}
-
 function openBatchPicker() {
   if (batchUploading.value) return;
   batchFileInputRef.value?.click();
@@ -887,46 +865,11 @@ async function retryBatchItem(itemId) {
   }
 }
 
-async function onUploadPdf() {
-  if (!selectedPdfFile.value) return;
-  uploadingPdf.value = true;
-  try {
-    const result = await uploadPaperPdf(selectedPdfFile.value);
-    uploadedFileUrl.value = result.relative_url || result.file_url;
-    uploadedFileName.value = result.file_name;
-    uploadedCitationMetadata.value = result.citation_metadata || result.citationMetadata || {};
-    if (uploadedCitationMetadata.value.title && !paperForm.title.trim()) {
-      paperForm.title = uploadedCitationMetadata.value.title;
-    }
-    if (Array.isArray(uploadedCitationMetadata.value.authors) && !paperForm.authors.trim()) {
-      paperForm.authors = uploadedCitationMetadata.value.authors.join(", ");
-    }
-    if (uploadedCitationMetadata.value.venue && !paperForm.conference.trim()) {
-      paperForm.conference = uploadedCitationMetadata.value.venue;
-    }
-  } catch (error) {
-    modal.open = true;
-    modal.type = "notice";
-    modal.title = "上传失败";
-    modal.message = error?.response?.data?.error || "PDF 上传失败，请检查登录状态后重试。";
-  } finally {
-    uploadingPdf.value = false;
-  }
-}
-
 async function onCreatePaper() {
-  if (!uploadedFileUrl.value) {
-    modal.open = true;
-    modal.type = "notice";
-    modal.title = "提示";
-    modal.message = "请先上传 PDF 文件，再保存文献。";
-    return;
-  }
-
   await createPaper({
     ...paperForm,
-    file_url: uploadedFileUrl.value,
-    citationMetadata: uploadedCitationMetadata.value,
+    file_url: "",
+    citationMetadata: {},
     folder_id: selectedFolderId.value || null
   });
 
@@ -934,12 +877,6 @@ async function onCreatePaper() {
   paperForm.authors = "";
   paperForm.conference = "";
   showPaperForm.value = false;
-
-  selectedPdfFile.value = null;
-  uploadedFileUrl.value = "";
-  uploadedFileName.value = "";
-  uploadedCitationMetadata.value = {};
-  fileInputKey.value += 1;
 
   await loadPapers();
 }

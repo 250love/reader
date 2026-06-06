@@ -406,33 +406,6 @@ nav a.router-link-active {
   background: #fff7f7;
 }
 
-.single-upload-divider {
-  margin: 0.85rem 0 0.65rem;
-  border-top: 1px dashed #c9d4dc;
-  color: #718597;
-  font-size: 0.86rem;
-}
-
-.single-upload-divider span {
-  display: inline-block;
-  transform: translateY(-50%);
-  background: #f9fcfd;
-  padding-right: 0.5rem;
-}
-
-.upload-row {
-  display: flex;
-  gap: 0.55rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.upload-tip {
-  margin: 0.55rem 0 0;
-  color: #215e5a;
-  font-size: 0.9rem;
-}
-
 .paper-actions {
   margin-top: 0.55rem;
   border-top: 1px dashed #d3dbe0;
