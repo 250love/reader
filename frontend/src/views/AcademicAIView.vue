@@ -43,7 +43,7 @@
         <button class="drawer-close" title="收起工具栏" @click="drawerCollapsed = true">×</button>
       </header>
 
-      <section v-if="activeDrawer === 'context'" class="drawer-section">
+      <section v-if="activeDrawer === 'context'" class="drawer-section context-section">
         <div class="section-title-row">
           <div>
             <h4>论文上下文</h4>
@@ -197,7 +197,7 @@
 
             <p v-if="message.loading" class="loading-text">正在生成回答...</p>
             <p v-else-if="message.error" class="error-text">{{ message.content }}</p>
-            <pre v-else>{{ message.content }}</pre>
+            <div v-else class="markdown-body" v-html="renderMarkdown(message.content)" />
 
             <footer v-if="message.role === 'assistant' && !message.loading" class="message-actions">
               <button class="btn-secondary" @click="copyMessage(message)" :disabled="message.error">复制 Markdown</button>
@@ -247,9 +247,9 @@
             v-model="customQuery"
             rows="1"
             placeholder="输入你想问的问题，例如：这篇论文适合怎么汇报？"
-            @keydown.enter.exact.prevent="runTask('custom_qa')"
+            @keydown.enter.exact.prevent="submitCustomQuestion"
           />
-          <button :disabled="loading" @click="runTask('custom_qa')">发送</button>
+          <button :disabled="loading" @click="submitCustomQuestion">发送</button>
         </div>
       </footer>
     </main>
@@ -445,6 +445,153 @@ function buildUserPrompt(taskKey, queryText) {
   return `请基于已选论文执行「${task?.label || taskKey}」。`;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderInlineMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function isTableSeparator(line) {
+  return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+}
+
+function parseTable(lines, startIndex) {
+  if (startIndex + 1 >= lines.length || !lines[startIndex].includes("|") || !isTableSeparator(lines[startIndex + 1])) {
+    return null;
+  }
+
+  const rows = [];
+  let index = startIndex;
+  while (index < lines.length && lines[index].includes("|") && lines[index].trim()) {
+    if (!isTableSeparator(lines[index])) {
+      rows.push(lines[index]);
+    }
+    index += 1;
+  }
+
+  if (rows.length < 2) return null;
+
+  const cellsFor = (row) => row
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => renderInlineMarkdown(cell.trim()));
+
+  const [head, ...body] = rows.map(cellsFor);
+  const thead = `<thead><tr>${head.map((cell) => `<th>${cell}</th>`).join("")}</tr></thead>`;
+  const tbody = `<tbody>${body
+    .map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`)
+    .join("")}</tbody>`;
+  return {
+    html: `<div class="markdown-table-wrap"><table>${thead}${tbody}</table></div>`,
+    nextIndex: index
+  };
+}
+
+function renderMarkdown(markdown) {
+  const lines = String(markdown || "").replace(/\r\n/g, "\n").split("\n");
+  const html = [];
+  let index = 0;
+  let inCode = false;
+  let codeLines = [];
+  let listItems = [];
+  let paragraph = [];
+
+  function flushParagraph() {
+    if (!paragraph.length) return;
+    html.push(`<p>${renderInlineMarkdown(paragraph.join(" "))}</p>`);
+    paragraph = [];
+  }
+
+  function flushList() {
+    if (!listItems.length) return;
+    html.push(`<ul>${listItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ul>`);
+    listItems = [];
+  }
+
+  function flushCode() {
+    html.push(`<pre class="code-block"><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+    codeLines = [];
+  }
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith("```")) {
+      flushParagraph();
+      flushList();
+      if (inCode) {
+        flushCode();
+        inCode = false;
+      } else {
+        inCode = true;
+        codeLines = [];
+      }
+      index += 1;
+      continue;
+    }
+
+    if (inCode) {
+      codeLines.push(line);
+      index += 1;
+      continue;
+    }
+
+    const table = parseTable(lines, index);
+    if (table) {
+      flushParagraph();
+      flushList();
+      html.push(table.html);
+      index = table.nextIndex;
+      continue;
+    }
+
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      index += 1;
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      const level = heading[1].length + 2;
+      html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+      index += 1;
+      continue;
+    }
+
+    const list = trimmed.match(/^[-*]\s+(.+)$/) || trimmed.match(/^\d+\.\s+(.+)$/);
+    if (list) {
+      flushParagraph();
+      listItems.push(list[1]);
+      index += 1;
+      continue;
+    }
+
+    paragraph.push(trimmed);
+    index += 1;
+  }
+
+  flushParagraph();
+  flushList();
+  if (inCode) flushCode();
+  return html.join("");
+}
+
 function makeMessage(role, data) {
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -494,6 +641,9 @@ async function runTask(taskKey, options = {}) {
     payload
   });
 
+  if (taskKey === "custom_qa" && !options.regenerate) {
+    customQuery.value = "";
+  }
   messages.value.push(userMessage, assistantMessage);
   loading.value = true;
   await scrollToBottom();
@@ -518,6 +668,10 @@ async function runTask(taskKey, options = {}) {
     loading.value = false;
     await scrollToBottom();
   }
+}
+
+function submitCustomQuestion() {
+  runTask("custom_qa");
 }
 
 async function scrollToBottom() {
@@ -564,10 +718,12 @@ onMounted(loadInitialData);
 
 <style scoped>
 .ai-workbench {
-  min-height: calc(100vh - 150px);
+  height: calc(100vh - 150px);
+  min-height: 640px;
   display: grid;
   grid-template-columns: 82px minmax(280px, 360px) minmax(0, 1fr);
   gap: 0.75rem;
+  overflow: hidden;
 }
 
 .tool-rail,
@@ -667,6 +823,8 @@ onMounted(loadInitialData);
   padding: 0.9rem;
   min-height: 0;
   overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .drawer-head,
@@ -713,6 +871,11 @@ onMounted(loadInitialData);
 .drawer-section {
   display: grid;
   gap: 0.75rem;
+  min-height: 0;
+}
+
+.context-section {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
 .section-title-row h4,
@@ -742,8 +905,10 @@ onMounted(loadInitialData);
 }
 
 .compact-scroll {
-  max-height: 42vh;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
+  padding-right: 0.18rem;
 }
 
 .paper-list,
@@ -798,6 +963,7 @@ onMounted(loadInitialData);
   padding-top: 0.75rem;
   display: grid;
   gap: 0.45rem;
+  flex: 0 0 auto;
 }
 
 .context-options label {
@@ -877,6 +1043,7 @@ onMounted(loadInitialData);
 
 .chat-shell {
   min-width: 0;
+  min-height: 0;
   border-radius: 24px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -898,8 +1065,10 @@ onMounted(loadInitialData);
 
 .message-list {
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
   padding: 1.1rem clamp(1rem, 3vw, 3rem);
+  scroll-behavior: smooth;
 }
 
 .empty-state {
@@ -997,13 +1166,91 @@ onMounted(loadInitialData);
   font-weight: 800;
 }
 
-.message-bubble pre,
 .message-bubble p {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.68;
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+
+.markdown-body {
+  color: #213544;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.markdown-body :deep(p) {
+  margin: 0.35rem 0;
+}
+
+.markdown-body :deep(h3),
+.markdown-body :deep(h4),
+.markdown-body :deep(h5) {
+  margin: 0.85rem 0 0.4rem;
+  font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+  line-height: 1.35;
+}
+
+.markdown-body :deep(ul) {
+  margin: 0.35rem 0 0.6rem;
+  padding-left: 1.25rem;
+}
+
+.markdown-body :deep(li) {
+  margin: 0.18rem 0;
+}
+
+.markdown-body :deep(code) {
+  border: 1px solid #d6e0e8;
+  border-radius: 6px;
+  background: #f5f8fb;
+  padding: 0.08rem 0.28rem;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.92em;
+}
+
+.markdown-body :deep(.code-block) {
+  margin: 0.6rem 0;
+  white-space: pre;
+  overflow-x: auto;
+  border: 1px solid #d6e0e8;
+  border-radius: 12px;
+  background: #f5f8fb;
+  padding: 0.72rem;
+}
+
+.markdown-body :deep(.code-block code) {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body :deep(.markdown-table-wrap) {
+  margin: 0.65rem 0;
+  overflow-x: auto;
+}
+
+.markdown-body :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #d6e0e8;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border-bottom: 1px solid #e1e8ee;
+  padding: 0.54rem 0.62rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown-body :deep(th) {
+  background: #eef5f8;
+  color: #263d4f;
 }
 
 .loading-text {
@@ -1048,11 +1295,12 @@ onMounted(loadInitialData);
 }
 
 .composer-wrap {
-  position: sticky;
+  position: relative;
   bottom: 0;
   padding: 0.85rem clamp(1rem, 3vw, 3rem) 1rem;
   background: linear-gradient(180deg, rgba(255, 250, 242, 0.72), rgba(255, 250, 242, 0.98) 32%);
   border-top: 1px solid rgba(210, 222, 230, 0.78);
+  z-index: 5;
 }
 
 .composer-summary {
