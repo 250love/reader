@@ -106,6 +106,66 @@
       </form>
 
       <section v-if="showPaperForm" class="upload-panel">
+        <div
+          class="batch-upload-zone"
+          :class="{ dragging: batchDragActive }"
+          @click="openBatchPicker"
+          @dragenter.prevent="batchDragActive = true"
+          @dragover.prevent="batchDragActive = true"
+          @dragleave.prevent="batchDragActive = false"
+          @drop.prevent="onBatchDrop"
+        >
+          <input
+            ref="batchFileInputRef"
+            type="file"
+            accept="application/pdf,.pdf"
+            multiple
+            class="sr-only-input"
+            @change="onBatchPicked"
+          />
+          <strong>批量导入 PDF</strong>
+          <p>点击选择多个 PDF，或将文件拖拽到这里。批量导入会自动保存到当前文件夹。</p>
+          <button type="button" class="btn-secondary" :disabled="batchUploading" @click.stop="openBatchPicker">
+            选择 PDF 文件
+          </button>
+        </div>
+
+        <div v-if="batchItems.length" class="batch-upload-list">
+          <div class="batch-upload-head">
+            <strong>待上传文件</strong>
+            <div class="batch-upload-actions">
+              <button class="btn-secondary" :disabled="batchUploading || !hasBatchPending" @click="uploadAllBatchItems">
+                {{ batchUploading ? "上传中..." : "开始上传" }}
+              </button>
+              <button class="btn-secondary" :disabled="batchUploading" @click="clearBatchItems">清空列表</button>
+            </div>
+          </div>
+
+          <article
+            v-for="item in batchItems"
+            :key="item.id"
+            :class="['batch-file-row', item.status]"
+          >
+            <div>
+              <strong>{{ item.name }}</strong>
+              <span>{{ formatFileSize(item.size) }}</span>
+            </div>
+            <p>{{ batchStatusText(item) }}</p>
+            <button
+              v-if="item.status === 'failed'"
+              class="btn-secondary"
+              :disabled="batchUploading || item.invalid"
+              @click="retryBatchItem(item.id)"
+            >
+              重试
+            </button>
+          </article>
+        </div>
+
+        <div class="single-upload-divider">
+          <span>或单篇上传后手动保存</span>
+        </div>
+
         <div class="upload-row">
           <input :key="fileInputKey" type="file" accept="application/pdf,.pdf" @change="onPdfPicked" />
           <button class="btn-secondary" :disabled="uploadingPdf || !selectedPdfFile" @click="onUploadPdf">
@@ -418,6 +478,10 @@ const uploadedFileUrl = ref("");
 const uploadedFileName = ref("");
 const uploadedCitationMetadata = ref({});
 const fileInputKey = ref(0);
+const batchFileInputRef = ref(null);
+const batchItems = ref([]);
+const batchUploading = ref(false);
+const batchDragActive = ref(false);
 const citationParsingId = ref("");
 
 const modal = reactive({
@@ -453,6 +517,7 @@ const paperForm = reactive({
   authors: "",
   conference: ""
 });
+const hasBatchPending = computed(() => batchItems.value.some((item) => item.status === "waiting" || item.status === "failed"));
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 const backendOrigin = new URL(apiBaseUrl, window.location.origin).origin;
 const pdfPreviewCacheByUrl = new Map();
@@ -676,6 +741,150 @@ async function onDeleteFolder(folder) {
 
 function onPdfPicked(event) {
   selectedPdfFile.value = event.target.files?.[0] || null;
+}
+
+function openBatchPicker() {
+  if (batchUploading.value) return;
+  batchFileInputRef.value?.click();
+}
+
+function isPdfFile(file) {
+  const name = String(file?.name || "").toLowerCase();
+  return name.endsWith(".pdf") || file?.type === "application/pdf";
+}
+
+function createBatchItem(file) {
+  const invalidReason = !file
+    ? "文件为空"
+    : !isPdfFile(file)
+      ? "仅支持 PDF 文件"
+      : file.size <= 0
+        ? "文件为空"
+        : "";
+
+  return {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    file,
+    name: file?.name || "未命名文件",
+    size: file?.size || 0,
+    status: invalidReason ? "failed" : "waiting",
+    error: invalidReason,
+    invalid: Boolean(invalidReason)
+  };
+}
+
+function addBatchFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  const existingKeys = new Set(batchItems.value.map((item) => `${item.name}-${item.size}-${item.file?.lastModified || 0}`));
+  const nextItems = [];
+  for (const file of files) {
+    const key = `${file.name}-${file.size}-${file.lastModified || 0}`;
+    if (existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    nextItems.push(createBatchItem(file));
+  }
+  batchItems.value = [...batchItems.value, ...nextItems];
+}
+
+function onBatchPicked(event) {
+  addBatchFiles(event.target.files);
+  event.target.value = "";
+}
+
+function onBatchDrop(event) {
+  batchDragActive.value = false;
+  if (batchUploading.value) return;
+  addBatchFiles(event.dataTransfer?.files);
+}
+
+function clearBatchItems() {
+  batchItems.value = [];
+}
+
+function formatFileSize(size) {
+  if (!size) return "0 KB";
+  const mb = size / 1024 / 1024;
+  if (mb >= 1) return `${mb.toFixed(2)} MB`;
+  return `${Math.max(1, Math.round(size / 1024))} KB`;
+}
+
+function batchStatusText(item) {
+  if (item.status === "waiting") return "等待上传";
+  if (item.status === "uploading") return "上传中...";
+  if (item.status === "success") return "上传成功";
+  return `上传失败：${item.error || "服务器返回错误"}`;
+}
+
+function metadataAuthorsText(metadata) {
+  const authors = metadata?.authors;
+  if (Array.isArray(authors)) return authors.join(", ");
+  return authors || "";
+}
+
+function titleFromUploadResult(result, item) {
+  const metadata = result?.citation_metadata || result?.citationMetadata || {};
+  const title = String(metadata.title || "").trim();
+  if (title) return title;
+  return String(item.name || "Untitled").replace(/\.pdf$/i, "").trim() || "Untitled";
+}
+
+function errorMessageFromUpload(error) {
+  if (error?.response?.status === 401) return "登录已失效，请重新登录";
+  return error?.response?.data?.error || "服务器返回错误";
+}
+
+async function uploadBatchItem(item) {
+  if (!item || item.invalid || item.status === "uploading") return false;
+  item.status = "uploading";
+  item.error = "";
+  try {
+    const result = await uploadPaperPdf(item.file);
+    const metadata = result.citation_metadata || result.citationMetadata || {};
+    await createPaper({
+      title: titleFromUploadResult(result, item),
+      authors: metadataAuthorsText(metadata),
+      conference: metadata.venue || metadata.conference || "",
+      year: metadata.year,
+      file_url: result.relative_url || result.file_url,
+      citationMetadata: metadata,
+      folder_id: selectedFolderId.value || null
+    });
+    item.status = "success";
+    return true;
+  } catch (error) {
+    item.status = "failed";
+    item.error = errorMessageFromUpload(error);
+    return false;
+  }
+}
+
+async function uploadAllBatchItems() {
+  if (batchUploading.value) return;
+  const targets = batchItems.value.filter((item) => (item.status === "waiting" || item.status === "failed") && !item.invalid);
+  if (!targets.length) return;
+  batchUploading.value = true;
+  try {
+    for (const item of targets) {
+      await uploadBatchItem(item);
+    }
+    await loadPapers();
+  } finally {
+    batchUploading.value = false;
+  }
+}
+
+async function retryBatchItem(itemId) {
+  if (batchUploading.value) return;
+  const item = batchItems.value.find((entry) => entry.id === itemId);
+  if (!item || item.invalid) return;
+  batchUploading.value = true;
+  try {
+    await uploadBatchItem(item);
+    await loadPapers();
+  } finally {
+    batchUploading.value = false;
+  }
 }
 
 async function onUploadPdf() {

@@ -308,6 +308,118 @@ nav a.router-link-active {
   padding: 0.7rem;
 }
 
+.sr-only-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+}
+
+.batch-upload-zone {
+  border: 1px dashed #aebfca;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(229, 247, 240, 0.72), rgba(255, 255, 255, 0.86));
+  display: grid;
+  justify-items: start;
+  gap: 0.38rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.batch-upload-zone.dragging {
+  border-color: #0f6d64;
+  background: #e6f7f2;
+  box-shadow: 0 10px 24px rgba(15, 109, 100, 0.12);
+}
+
+.batch-upload-zone p {
+  margin: 0;
+  color: #5f7283;
+}
+
+.batch-upload-list {
+  display: grid;
+  gap: 0.52rem;
+  margin-top: 0.75rem;
+}
+
+.batch-upload-head,
+.batch-upload-actions,
+.batch-file-row {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.batch-upload-head {
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.batch-upload-actions {
+  flex-wrap: wrap;
+}
+
+.batch-file-row {
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #d3dde5;
+  border-radius: 14px;
+  background: #fff;
+  padding: 0.65rem 0.75rem;
+}
+
+.batch-file-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.batch-file-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-file-row span,
+.batch-file-row p {
+  color: #627789;
+  font-size: 0.9rem;
+}
+
+.batch-file-row p {
+  margin: 0;
+}
+
+.batch-file-row.success {
+  border-color: #b8e0d5;
+  background: #f2fbf7;
+}
+
+.batch-file-row.failed {
+  border-color: #efc5c5;
+  background: #fff7f7;
+}
+
+.single-upload-divider {
+  margin: 0.85rem 0 0.65rem;
+  border-top: 1px dashed #c9d4dc;
+  color: #718597;
+  font-size: 0.86rem;
+}
+
+.single-upload-divider span {
+  display: inline-block;
+  transform: translateY(-50%);
+  background: #f9fcfd;
+  padding-right: 0.5rem;
+}
+
 .upload-row {
   display: flex;
   gap: 0.55rem;
