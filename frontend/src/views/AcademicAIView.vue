@@ -158,7 +158,7 @@
             <h4>历史结果</h4>
             <p>最近生成的 AI 回答，可一键回显到主对话区。</p>
           </div>
-          <span class="hero-badge">{{ agentRuns.length }} 条</span>
+          <span class="hero-badge">{{ visibleAgentRuns.length }} 条</span>
         </div>
 
         <div v-if="loadingRuns" class="placeholder-card">
@@ -166,16 +166,16 @@
           <p>稍等片刻，最近生成会出现在这里。</p>
         </div>
         <p v-else-if="runsError" class="error-text">{{ runsError }}</p>
-        <div v-else-if="agentRuns.length === 0" class="placeholder-card">
+        <div v-else-if="visibleAgentRuns.length === 0" class="placeholder-card">
           <strong>暂无历史记录</strong>
           <p>生成一次回答后，系统会把结果保存到这里，方便回看和继续追问。</p>
         </div>
 
         <div v-else class="history-preview-list compact-scroll">
           <article
-            v-for="run in agentRuns"
+            v-for="run in visibleAgentRuns"
             :key="run.id"
-            class="history-preview-card run-card"
+            :class="['history-preview-card', 'run-card', { active: run.id === currentRunId, pending: run.pending }]"
             @click="restoreRun(run)"
           >
             <div>
@@ -183,7 +183,8 @@
               <p>{{ runSubtitle(run) }}</p>
               <small>{{ formatDateTime(run.created_at) }}</small>
             </div>
-            <button class="btn-secondary small-btn" @click.stop="removeRun(run.id)">删除</button>
+            <span v-if="run.pending" class="run-status">生成中</span>
+            <button v-else class="btn-secondary small-btn" @click.stop="removeRun(run.id)">删除</button>
           </article>
         </div>
       </section>
@@ -193,15 +194,12 @@
       <header class="chat-topbar">
         <div>
           <p class="brand-kicker">Academic AI</p>
-          <h2>学术 AI 工作台</h2>
+          <h2>{{ conversationTitle }}</h2>
         </div>
         <div class="topbar-actions">
           <button v-if="drawerCollapsed" class="btn-secondary" @click="drawerCollapsed = false">展开工具栏</button>
           <button class="btn-secondary" :disabled="loadingData" @click="loadInitialData">
             {{ loadingData ? "刷新中..." : "刷新数据" }}
-          </button>
-          <button class="btn-secondary" :disabled="messages.length === 0 && !noticeMessage" @click="clearConversation">
-            清空对话
           </button>
         </div>
       </header>
@@ -323,6 +321,9 @@ const dataError = ref("");
 const noticeMessage = ref("");
 const messages = ref([]);
 const agentRuns = ref([]);
+const currentRunId = ref("");
+const currentRunDraft = ref(null);
+const currentConversationTitle = ref("");
 const activeDrawer = ref("context");
 const drawerCollapsed = ref(false);
 const moreMenuOpen = ref(false);
@@ -398,6 +399,21 @@ const taskLabelMap = computed(() => {
   return labels;
 });
 
+const conversationTitle = computed(() => currentConversationTitle.value || "学术 AI 工作台");
+
+const visibleAgentRuns = computed(() => {
+  const rows = [...agentRuns.value];
+  const draft = currentRunDraft.value;
+  if (!draft) return rows;
+
+  const existingIndex = rows.findIndex((run) => run.id === draft.id);
+  if (existingIndex >= 0) {
+    rows[existingIndex] = { ...rows[existingIndex], ...draft };
+    return rows;
+  }
+  return [draft, ...rows];
+});
+
 const activeDrawerTitle = computed(() => {
   const item = railItems.find((entry) => entry.key === activeDrawer.value);
   return item?.label || "工具";
@@ -455,7 +471,7 @@ async function loadAgentRuns() {
   loadingRuns.value = true;
   runsError.value = "";
   try {
-    agentRuns.value = await fetchAgentRuns({ limit: 20 });
+    agentRuns.value = await fetchAgentRuns({ limit: 100 });
   } catch (error) {
     runsError.value = error?.response?.data?.error || "历史记录加载失败。";
   } finally {
@@ -523,6 +539,21 @@ function buildUserPrompt(taskKey, queryText) {
   const task = tasks.value.find((item) => item.key === taskKey);
   if (taskKey === "custom_qa") return queryText.trim();
   return `请基于已选论文执行「${task?.label || taskKey}」。`;
+}
+
+function buildConversationTitle(taskKey, userPrompt, sources = []) {
+  const taskLabel = taskLabelMap.value[taskKey] || taskKey || "学术 AI";
+  const sourceTitles = (sources || [])
+    .map((source) => truncateText(source.title, 18))
+    .filter(Boolean);
+
+  if (taskKey === "custom_qa" && userPrompt) return truncateText(userPrompt, 32);
+  if (taskKey === "paper_compare" && sourceTitles.length >= 2) {
+    return `多篇对比：${sourceTitles[0]} / ${sourceTitles[1]}`;
+  }
+  if (sourceTitles.length) return `${sourceTitles[0]} · ${taskLabel}`;
+  if (userPrompt) return truncateText(userPrompt, 32);
+  return taskLabel;
 }
 
 function escapeHtml(value) {
@@ -755,10 +786,15 @@ async function runTask(taskKey, options = {}) {
   }
 
   const task = tasks.value.find((item) => item.key === taskKey);
+  const userPrompt = options.regenerate
+    ? `重新生成：${buildUserPrompt(taskKey, queryText)}`
+    : buildUserPrompt(taskKey, queryText);
+  const draftTitle = buildConversationTitle(taskKey, userPrompt, []);
   const payload = {
     task: taskKey,
     paper_ids: [...selectedPaperIds.value],
     query: queryText,
+    user_prompt: userPrompt,
     provider_id: selectedProviderId.value || undefined,
     target_lang: targetLang.value,
     context_options: { ...contextOptions }
@@ -766,7 +802,7 @@ async function runTask(taskKey, options = {}) {
 
   const userMessage = makeMessage("user", {
     label: task?.label || "自定义提问",
-    content: options.regenerate ? `重新生成：${buildUserPrompt(taskKey, queryText)}` : buildUserPrompt(taskKey, queryText)
+    content: userPrompt
   });
   const assistantMessage = makeMessage("assistant", {
     label: task?.label || "学术 AI",
@@ -779,6 +815,19 @@ async function runTask(taskKey, options = {}) {
     customQuery.value = "";
   }
   messages.value.push(userMessage, assistantMessage);
+  currentRunId.value = "";
+  currentConversationTitle.value = draftTitle;
+  currentRunDraft.value = {
+    id: "__current_pending",
+    task: taskKey,
+    title: draftTitle,
+    user_prompt: userPrompt,
+    query: queryText,
+    paper_ids: [...selectedPaperIds.value],
+    sources: [],
+    created_at: new Date().toISOString(),
+    pending: true
+  };
   loading.value = true;
   await scrollToBottom();
 
@@ -792,8 +841,26 @@ async function runTask(taskKey, options = {}) {
       runId: result.run_id || "",
       payload
     });
+    const nextTitle = result.title || buildConversationTitle(taskKey, userPrompt, result.sources || []);
+    currentRunId.value = result.run_id || "";
+    currentConversationTitle.value = nextTitle;
+    currentRunDraft.value = result.run_id
+      ? {
+          id: result.run_id,
+          task: taskKey,
+          title: nextTitle,
+          user_prompt: result.user_prompt || userPrompt,
+          query: queryText,
+          paper_ids: [...selectedPaperIds.value],
+          sources: result.sources || [],
+          created_at: new Date().toISOString(),
+          pending: false
+        }
+      : null;
     await loadAgentRuns();
+    currentRunDraft.value = null;
   } catch (error) {
+    currentRunDraft.value = null;
     Object.assign(assistantMessage, {
       content: error?.response?.data?.error || "学术 AI 调用失败",
       loading: false,
@@ -844,6 +911,7 @@ function truncateText(value, maxLength = 34) {
 }
 
 function runTitle(run) {
+  if (run.title) return run.title;
   const label = taskLabelMap.value[run.task] || run.task || "学术 AI";
   const firstSource = run.sources?.[0]?.title || "";
   if (firstSource) return `${truncateText(firstSource, 18)} · ${label}`;
@@ -852,6 +920,8 @@ function runTitle(run) {
 }
 
 function runSubtitle(run) {
+  if (run.pending) return "正在生成回答...";
+  if (run.user_prompt) return truncateText(run.user_prompt, 46);
   if (run.query) return truncateText(run.query, 46);
   const count = Array.isArray(run.paper_ids) ? run.paper_ids.length : 0;
   if (count > 0) return `${count} 篇论文上下文 · 点击回显回答`;
@@ -871,17 +941,21 @@ function formatDateTime(value) {
 }
 
 async function restoreRun(run) {
-  if (!run) return;
+  if (!run || run.pending) return;
   selectedTask.value = run.task || selectedTask.value;
   selectedPaperIds.value = Array.isArray(run.paper_ids) ? run.paper_ids.map(String) : [];
   selectedProviderId.value = run.provider_id || selectedProviderId.value;
+  currentRunId.value = run.id || "";
+  currentRunDraft.value = null;
+  currentConversationTitle.value = runTitle(run);
 
-  const taskLabel = taskLabelMap.value[run.task] || "历史结果";
-  const userText = run.query || `历史记录：${taskLabel}`;
+  const taskLabel = taskLabelMap.value[run.task] || run.task || "学术 AI";
+  const userText = run.user_prompt || run.query || buildConversationTitle(run.task, "", run.sources || []);
   const payload = {
     task: run.task,
     paper_ids: [...selectedPaperIds.value],
     query: run.query || "",
+    user_prompt: userText,
     provider_id: run.provider_id || undefined,
     target_lang: targetLang.value,
     context_options: { ...contextOptions }
@@ -889,7 +963,7 @@ async function restoreRun(run) {
 
   messages.value = [
     makeMessage("user", {
-      label: "历史记录",
+      label: taskLabel,
       content: userText
     }),
     makeMessage("assistant", {
@@ -901,8 +975,7 @@ async function restoreRun(run) {
       runId: run.id || ""
     })
   ];
-  noticeMessage.value = "已从历史记录恢复回答。";
-  drawerCollapsed.value = true;
+  noticeMessage.value = "";
   await scrollToBottom();
 }
 
@@ -920,6 +993,9 @@ async function removeRun(runId) {
 function clearConversation() {
   messages.value = [];
   noticeMessage.value = "";
+  currentRunId.value = "";
+  currentRunDraft.value = null;
+  currentConversationTitle.value = "";
 }
 
 function startNewChat() {
@@ -1389,10 +1465,27 @@ onMounted(loadInitialData);
   transform: translateY(-1px);
 }
 
+.run-card.active,
+.run-card.pending {
+  border-color: rgba(15, 109, 100, 0.38);
+  background: linear-gradient(135deg, rgba(229, 247, 240, 0.96), rgba(255, 255, 255, 0.88));
+}
+
 .run-card small {
   display: block;
   margin-top: 0.42rem;
   color: #7a8da0;
+}
+
+.run-status {
+  border: 1px solid rgba(15, 109, 100, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #0f6d64;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.2rem 0.46rem;
+  white-space: nowrap;
 }
 
 .history-preview-card.muted {
@@ -1452,6 +1545,17 @@ onMounted(loadInitialData);
 .chat-topbar {
   padding: 0.95rem 1rem 0.75rem;
   border-bottom: 1px solid rgba(200, 214, 224, 0.75);
+}
+
+.chat-topbar > div:first-child {
+  min-width: 0;
+}
+
+.chat-topbar h2 {
+  max-width: min(820px, 58vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-actions {

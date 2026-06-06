@@ -59,12 +59,12 @@ def run_agent_task():
 @auth_required
 def list_agent_runs():
     db = get_db()
-    raw_limit = request.args.get("limit", 20)
+    raw_limit = request.args.get("limit", 100)
     try:
         limit = int(raw_limit)
     except (TypeError, ValueError):
-        limit = 20
-    limit = max(1, min(limit, 50))
+        limit = 100
+    limit = max(1, min(limit, 100))
 
     rows = list(
         db.ai_runs.find({"user_id": g.current_user["_id"]})

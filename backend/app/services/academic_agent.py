@@ -161,6 +161,32 @@ def _truncate(text: str, max_chars: int) -> str:
     return f"{text[:max_chars]}\n...[truncated]"
 
 
+def _compact_title(text: str, max_chars: int = 28) -> str:
+    compact = " ".join(str(text or "").split())
+    if len(compact) <= max_chars:
+        return compact
+    return f"{compact[:max_chars].rstrip()}..."
+
+
+def build_run_title(task: str, user_prompt: str, sources: list[dict]) -> str:
+    task_label = ACADEMIC_TASKS.get(task, {}).get("label") or "学术 AI"
+    source_titles = [
+        _compact_title(source.get("title"), 18)
+        for source in sources
+        if source.get("title")
+    ]
+
+    if task == "custom_qa" and user_prompt:
+        return _compact_title(user_prompt, 32)
+    if task == "paper_compare" and len(source_titles) >= 2:
+        return f"多篇对比：{source_titles[0]} / {source_titles[1]}"
+    if source_titles:
+        return f"{source_titles[0]} · {task_label}"
+    if user_prompt:
+        return _compact_title(user_prompt, 32)
+    return task_label
+
+
 def _build_metadata_section(paper: dict) -> str:
     metadata = paper.get("citationMetadata") or {}
     lines = [
@@ -410,6 +436,7 @@ def run_academic_task(db, user_id: ObjectId, payload: dict, upload_root: str) ->
     paper_ids = payload.get("paper_ids") or []
     query = str(payload.get("query") or "").strip()
     provider_id = payload.get("provider_id") or None
+    user_prompt = str(payload.get("user_prompt") or "").strip()
     target_lang = str(payload.get("target_lang") or "zh-CN").strip() or "zh-CN"
     context_options = payload.get("context_options") or {}
 
@@ -440,6 +467,7 @@ def run_academic_task(db, user_id: ObjectId, payload: dict, upload_root: str) ->
     messages = build_messages(task, query, papers_context, target_lang)
     answer = call_chat_completion(provider, messages, temperature=0.2, timeout=60)
     suggested_questions = SUGGESTED_QUESTIONS.get(task, SUGGESTED_QUESTIONS["custom_qa"])
+    run_title = build_run_title(task, user_prompt or query, sources)
 
     now = datetime.now(UTC)
     run_doc = {
@@ -447,6 +475,8 @@ def run_academic_task(db, user_id: ObjectId, payload: dict, upload_root: str) ->
         "paper_ids": [paper["_id"] for paper in papers],
         "task": task,
         "query": query,
+        "user_prompt": user_prompt,
+        "title": run_title,
         "provider_id": provider.get("_id"),
         "answer": answer,
         "sources": sources,
@@ -459,6 +489,8 @@ def run_academic_task(db, user_id: ObjectId, payload: dict, upload_root: str) ->
     return {
         "ok": True,
         "run_id": str(inserted.inserted_id),
+        "title": run_title,
+        "user_prompt": user_prompt,
         "task": task,
         "answer": answer,
         "sources": sources,
