@@ -190,7 +190,7 @@ export async function fetchAgentTasks() {
 
 export async function runAcademicAgent(payload) {
   const { data } = await api.post("/agent/run", payload, {
-    timeout: 60000
+    timeout: 90000
   });
   return data;
 }
@@ -202,6 +202,11 @@ export async function fetchAgentRuns(params = {}) {
 
 export async function fetchAgentRun(id) {
   const { data } = await api.get(`/agent/runs/${id}`);
+  return data;
+}
+
+export async function updateAgentRun(id, payload) {
+  const { data } = await api.patch(`/agent/runs/${id}`, payload);
   return data;
 }
 

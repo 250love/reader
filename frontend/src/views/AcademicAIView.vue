@@ -1,5 +1,5 @@
 <template>
-  <section class="ai-workbench" :class="{ 'drawer-collapsed': drawerCollapsed }">
+  <section class="ai-workbench" :class="{ 'drawer-collapsed': drawerCollapsed }" @click="closeRunMenu">
     <aside class="tool-rail">
       <button class="rail-action primary" title="新对话" @click="startNewChat">
         <span>新</span>
@@ -177,6 +177,7 @@
             :key="run.id"
             :class="['history-preview-card', 'run-card', { active: run.id === currentRunId, pending: run.pending }]"
             @click="restoreRun(run)"
+            @contextmenu.prevent.stop="openRunMenu($event, run)"
           >
             <div>
               <strong>{{ runTitle(run) }}</strong>
@@ -184,9 +185,19 @@
               <small>{{ formatDateTime(run.created_at) }}</small>
             </div>
             <span v-if="run.pending" class="run-status">生成中</span>
-            <button v-else class="btn-secondary small-btn" @click.stop="removeRun(run.id)">删除</button>
           </article>
         </div>
+
+        <section
+          v-if="runMenu.open"
+          class="run-context-menu"
+          :style="{ left: `${runMenu.x}px`, top: `${runMenu.y}px` }"
+          @click.stop
+        >
+          <button @click="renameRunFromMenu">重命名</button>
+          <button @click="archiveRunFromMenu">归档</button>
+          <button class="danger" @click="deleteRunFromMenu">删除</button>
+        </section>
       </section>
     </aside>
 
@@ -194,7 +205,9 @@
       <header class="chat-topbar">
         <div>
           <p class="brand-kicker">Academic AI</p>
-          <h2>{{ conversationTitle }}</h2>
+          <h2 title="右键重命名对话" @contextmenu.prevent.stop="renameCurrentConversation">
+            {{ conversationTitle }}
+          </h2>
         </div>
         <div class="topbar-actions">
           <button v-if="drawerCollapsed" class="btn-secondary" @click="drawerCollapsed = false">展开工具栏</button>
@@ -300,7 +313,8 @@ import {
   fetchAgentRuns,
   fetchPapers,
   fetchProviders,
-  runAcademicAgent
+  runAcademicAgent,
+  updateAgentRun
 } from "@/services/api";
 
 const route = useRoute();
@@ -330,6 +344,12 @@ const moreMenuOpen = ref(false);
 const messageListRef = ref(null);
 const loadingRuns = ref(false);
 const runsError = ref("");
+const runMenu = reactive({
+  open: false,
+  x: 0,
+  y: 0,
+  runId: ""
+});
 
 const contextOptions = reactive({
   include_metadata: true,
@@ -399,7 +419,7 @@ const taskLabelMap = computed(() => {
   return labels;
 });
 
-const conversationTitle = computed(() => currentConversationTitle.value || "学术 AI 工作台");
+const conversationTitle = computed(() => currentConversationTitle.value || "新对话");
 
 const visibleAgentRuns = computed(() => {
   const rows = [...agentRuns.value];
@@ -552,7 +572,7 @@ function buildConversationTitle(taskKey, userPrompt, sources = []) {
     return `多篇对比：${sourceTitles[0]} / ${sourceTitles[1]}`;
   }
   if (sourceTitles.length) return `${sourceTitles[0]} · ${taskLabel}`;
-  if (userPrompt) return truncateText(userPrompt, 32);
+  if (userPrompt) return `${taskLabel}讨论`;
   return taskLabel;
 }
 
@@ -789,7 +809,7 @@ async function runTask(taskKey, options = {}) {
   const userPrompt = options.regenerate
     ? `重新生成：${buildUserPrompt(taskKey, queryText)}`
     : buildUserPrompt(taskKey, queryText);
-  const draftTitle = buildConversationTitle(taskKey, userPrompt, []);
+  const draftTitle = "新对话";
   const payload = {
     task: taskKey,
     paper_ids: [...selectedPaperIds.value],
@@ -940,8 +960,104 @@ function formatDateTime(value) {
   }).format(date);
 }
 
+function patchRunInList(runId, patch) {
+  agentRuns.value = agentRuns.value.map((run) => (
+    run.id === runId ? { ...run, ...patch } : run
+  ));
+  if (currentRunDraft.value?.id === runId) {
+    currentRunDraft.value = { ...currentRunDraft.value, ...patch };
+  }
+}
+
+function openRunMenu(event, run) {
+  if (!run || run.pending) return;
+  runMenu.open = true;
+  runMenu.x = event.clientX;
+  runMenu.y = event.clientY;
+  runMenu.runId = run.id || "";
+}
+
+function closeRunMenu() {
+  runMenu.open = false;
+}
+
+function selectedMenuRun() {
+  return visibleAgentRuns.value.find((run) => run.id === runMenu.runId);
+}
+
+async function renameRun(run, title) {
+  const nextTitle = String(title || "").trim();
+  if (!run?.id || !nextTitle) return;
+
+  const updated = await updateAgentRun(run.id, { title: nextTitle });
+  patchRunInList(run.id, { title: updated.title || nextTitle });
+  if (currentRunId.value === run.id) {
+    currentConversationTitle.value = updated.title || nextTitle;
+  }
+}
+
+async function renameRunFromMenu() {
+  const run = selectedMenuRun();
+  closeRunMenu();
+  if (!run) return;
+  const nextTitle = window.prompt("重命名对话", runTitle(run));
+  if (nextTitle === null) return;
+  try {
+    await renameRun(run, nextTitle);
+  } catch (error) {
+    noticeMessage.value = error?.response?.data?.error || "重命名失败。";
+  }
+}
+
+async function archiveRunFromMenu() {
+  const run = selectedMenuRun();
+  closeRunMenu();
+  if (!run?.id) return;
+  try {
+    await updateAgentRun(run.id, { archived: true });
+    agentRuns.value = agentRuns.value.filter((item) => item.id !== run.id);
+    if (currentRunId.value === run.id) {
+      clearConversation();
+    }
+  } catch (error) {
+    noticeMessage.value = error?.response?.data?.error || "归档失败。";
+  }
+}
+
+async function deleteRunFromMenu() {
+  const run = selectedMenuRun();
+  closeRunMenu();
+  if (!run?.id) return;
+  const ok = window.confirm(`确认删除「${runTitle(run)}」吗？`);
+  if (!ok) return;
+  await removeRun(run.id);
+}
+
+async function renameCurrentConversation() {
+  const run = currentRunId.value
+    ? visibleAgentRuns.value.find((item) => item.id === currentRunId.value)
+    : null;
+  const nextTitle = window.prompt("重命名对话", conversationTitle.value);
+  if (nextTitle === null) return;
+  const cleanTitle = nextTitle.trim();
+  if (!cleanTitle) return;
+
+  if (!run?.id) {
+    currentConversationTitle.value = cleanTitle;
+    if (currentRunDraft.value) currentRunDraft.value = { ...currentRunDraft.value, title: cleanTitle };
+    return;
+  }
+
+  try {
+    await renameRun(run, cleanTitle);
+  } catch (error) {
+    noticeMessage.value = error?.response?.data?.error || "重命名失败。";
+  }
+}
+
 async function restoreRun(run) {
   if (!run || run.pending) return;
+  closeRunMenu();
   selectedTask.value = run.task || selectedTask.value;
   selectedPaperIds.value = Array.isArray(run.paper_ids) ? run.paper_ids.map(String) : [];
   selectedProviderId.value = run.provider_id || selectedProviderId.value;
@@ -984,6 +1100,9 @@ async function removeRun(runId) {
   try {
     await deleteAgentRun(runId);
     agentRuns.value = agentRuns.value.filter((run) => run.id !== runId);
+    if (currentRunId.value === runId) {
+      clearConversation();
+    }
     noticeMessage.value = "历史记录已删除。";
   } catch (error) {
     noticeMessage.value = error?.response?.data?.error || "删除历史记录失败。";
@@ -1488,6 +1607,36 @@ onMounted(loadInitialData);
   white-space: nowrap;
 }
 
+.run-context-menu {
+  position: fixed;
+  z-index: 80;
+  width: 132px;
+  border: 1px solid #cfdde6;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 38px rgba(20, 36, 50, 0.18);
+  padding: 0.28rem;
+}
+
+.run-context-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #24394a;
+  text-align: left;
+  padding: 0.52rem 0.62rem;
+}
+
+.run-context-menu button:hover {
+  background: #eef7f4;
+}
+
+.run-context-menu button.danger {
+  color: #b63838;
+}
+
 .history-preview-card.muted {
   border-style: dashed;
   background: rgba(251, 253, 255, 0.76);
@@ -1556,6 +1705,7 @@ onMounted(loadInitialData);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: context-menu;
 }
 
 .topbar-actions {

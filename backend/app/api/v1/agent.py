@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from flask import Blueprint, current_app, g, request
 
 from app.core.auth import auth_required
@@ -67,7 +69,7 @@ def list_agent_runs():
     limit = max(1, min(limit, 100))
 
     rows = list(
-        db.ai_runs.find({"user_id": g.current_user["_id"]})
+        db.ai_runs.find({"user_id": g.current_user["_id"], "archived": {"$ne": True}})
         .sort("created_at", -1)
         .limit(limit)
     )
@@ -85,6 +87,40 @@ def get_agent_run(run_id):
     row = db.ai_runs.find_one({"_id": run_oid, "user_id": g.current_user["_id"]})
     if not row:
         return {"error": "run not found"}, 404
+    return mongo_doc_to_json(row)
+
+
+@agent_bp.patch("/runs/<run_id>")
+@auth_required
+def update_agent_run(run_id):
+    run_oid = parse_object_id(run_id)
+    if not run_oid:
+        return {"error": "run_id is invalid"}, 400
+
+    payload = request.get_json(silent=True) or {}
+    updates = {"updated_at": datetime.now(UTC)}
+    if "title" in payload:
+        title = str(payload.get("title") or "").strip()
+        if not title:
+            return {"error": "title is required"}, 400
+        updates["title"] = title[:80]
+    if "archived" in payload:
+        archived = bool(payload.get("archived"))
+        updates["archived"] = archived
+        updates["archived_at"] = datetime.now(UTC) if archived else None
+
+    if len(updates) == 1:
+        return {"error": "no supported fields to update"}, 400
+
+    db = get_db()
+    result = db.ai_runs.update_one(
+        {"_id": run_oid, "user_id": g.current_user["_id"]},
+        {"$set": updates},
+    )
+    if result.matched_count == 0:
+        return {"error": "run not found"}, 404
+
+    row = db.ai_runs.find_one({"_id": run_oid, "user_id": g.current_user["_id"]})
     return mongo_doc_to_json(row)
 
 

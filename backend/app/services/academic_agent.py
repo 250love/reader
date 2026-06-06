@@ -168,7 +168,7 @@ def _compact_title(text: str, max_chars: int = 28) -> str:
     return f"{compact[:max_chars].rstrip()}..."
 
 
-def build_run_title(task: str, user_prompt: str, sources: list[dict]) -> str:
+def build_fallback_run_title(task: str, user_prompt: str, answer: str, sources: list[dict]) -> str:
     task_label = ACADEMIC_TASKS.get(task, {}).get("label") or "学术 AI"
     source_titles = [
         _compact_title(source.get("title"), 18)
@@ -176,15 +176,51 @@ def build_run_title(task: str, user_prompt: str, sources: list[dict]) -> str:
         if source.get("title")
     ]
 
-    if task == "custom_qa" and user_prompt:
-        return _compact_title(user_prompt, 32)
     if task == "paper_compare" and len(source_titles) >= 2:
         return f"多篇对比：{source_titles[0]} / {source_titles[1]}"
     if source_titles:
         return f"{source_titles[0]} · {task_label}"
+    for line in str(answer or "").splitlines():
+        clean = line.strip().lstrip("#").strip()
+        if clean:
+            return _compact_title(clean, 32)
     if user_prompt:
-        return _compact_title(user_prompt, 32)
+        return f"{task_label}讨论"
     return task_label
+
+
+def generate_run_title(provider: dict, task: str, user_prompt: str, answer: str, sources: list[dict]) -> str:
+    fallback = build_fallback_run_title(task, user_prompt, answer, sources)
+    source_titles = "；".join(source.get("title", "") for source in sources if source.get("title")) or "无"
+    task_label = ACADEMIC_TASKS.get(task, {}).get("label") or task
+    title_messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是学术 AI 对话标题生成器。请根据用户问题和助手回答生成一个中文短标题。"
+                "标题要概括对话主题，不要照搬用户原问题，不要加引号、冒号前缀或句号。"
+                "长度控制在 8 到 18 个中文字符。只输出标题。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"任务类型：{task_label}\n"
+                f"论文标题：{source_titles}\n"
+                f"用户问题：{_truncate(user_prompt, 800)}\n"
+                f"助手回答摘要材料：{_truncate(answer, 1600)}"
+            ),
+        },
+    ]
+    try:
+        title = call_chat_completion(provider, title_messages, temperature=0.2, timeout=20)
+    except Exception:
+        return fallback
+
+    title = " ".join(str(title or "").split()).strip("「」\"'“”。.：:")
+    if not title:
+        return fallback
+    return _compact_title(title, 28)
 
 
 def _build_metadata_section(paper: dict) -> str:
@@ -467,7 +503,7 @@ def run_academic_task(db, user_id: ObjectId, payload: dict, upload_root: str) ->
     messages = build_messages(task, query, papers_context, target_lang)
     answer = call_chat_completion(provider, messages, temperature=0.2, timeout=60)
     suggested_questions = SUGGESTED_QUESTIONS.get(task, SUGGESTED_QUESTIONS["custom_qa"])
-    run_title = build_run_title(task, user_prompt or query, sources)
+    run_title = generate_run_title(provider, task, user_prompt or query, answer, sources)
 
     now = datetime.now(UTC)
     run_doc = {
