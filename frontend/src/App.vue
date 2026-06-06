@@ -22,6 +22,8 @@
           <small>{{ isDarkTheme ? "白天" : "黑夜" }}</small>
         </button>
 
+        <GlobalHelpButton />
+
         <div class="user-entry-wrap" ref="menuRootRef">
           <button class="user-entry-btn" @click="toggleMenu">
             {{ userInitial }}
@@ -57,6 +59,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 
+import GlobalHelpButton from "@/components/GlobalHelpButton.vue";
 import { clearAuth, getUser, isAuthed } from "@/services/auth";
 import { THEME_CHANGE_EVENT, THEMES, getStoredTheme, setStoredTheme } from "@/services/theme";
 
