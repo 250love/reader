@@ -1,5 +1,5 @@
 <template>
-  <section class="ai-workbench">
+  <section class="ai-workbench" :class="{ 'drawer-collapsed': drawerCollapsed }">
     <aside class="tool-rail">
       <button class="rail-action primary" title="新对话" @click="startNewChat">
         <span>新</span>
@@ -85,12 +85,13 @@
         </div>
       </section>
 
-      <section v-else-if="activeDrawer === 'tasks'" class="drawer-section">
-        <div class="section-title-row">
+      <section v-else-if="activeDrawer === 'tasks'" class="drawer-section tasks-section">
+        <div class="section-title-row drawer-hero-card">
           <div>
             <h4>快捷任务</h4>
             <p>选择论文后可直接运行。</p>
           </div>
+          <span class="hero-badge">{{ normalTasks.length }} 个模板</span>
         </div>
 
         <div class="task-list">
@@ -101,22 +102,35 @@
             :disabled="loading"
             @click="runTask(task.key)"
           >
-            <strong>{{ task.label }}</strong>
-            <span>{{ task.description }}</span>
+            <span class="task-icon">{{ taskIconMap[task.key] || "AI" }}</span>
+            <span class="task-copy">
+              <strong>{{ task.label }}</strong>
+              <span>{{ task.description }}</span>
+            </span>
+            <small>{{ taskModeLabel(task.mode) }}</small>
           </button>
         </div>
       </section>
 
-      <section v-else-if="activeDrawer === 'model'" class="drawer-section">
-        <div class="section-title-row">
+      <section v-else-if="activeDrawer === 'model'" class="drawer-section model-section">
+        <div class="section-title-row drawer-hero-card">
           <div>
             <h4>模型设置</h4>
             <p>复用账号设置中的 LLM Provider。</p>
           </div>
+          <span class="hero-badge">{{ providers.length || 0 }} 个</span>
+        </div>
+
+        <div class="model-status-card">
+          <span class="model-dot" :class="{ ready: providers.length > 0 }"></span>
+          <div>
+            <strong>{{ providers.length > 0 ? "Provider 已就绪" : "尚未配置 Provider" }}</strong>
+            <p>{{ providers.length > 0 ? providerSummary : "请先在账号设置中添加 OpenAI-compatible 模型。" }}</p>
+          </div>
         </div>
 
         <label class="field-label">
-          Provider
+          <span>Provider</span>
           <select v-model="selectedProviderId" :disabled="providers.length === 0">
             <option value="">默认 Provider</option>
             <option v-for="provider in providers" :key="provider.id" :value="provider.id">
@@ -126,7 +140,7 @@
         </label>
 
         <label class="field-label">
-          输出语言
+          <span>输出语言</span>
           <select v-model="targetLang">
             <option value="zh-CN">中文</option>
             <option value="en">English</option>
@@ -138,17 +152,28 @@
         </p>
       </section>
 
-      <section v-else class="drawer-section">
-        <div class="section-title-row">
+      <section v-else class="drawer-section history-section">
+        <div class="section-title-row drawer-hero-card">
           <div>
             <h4>历史结果</h4>
             <p>Phase 5 将在这里显示最近生成记录。</p>
           </div>
+          <span class="hero-badge">预留</span>
         </div>
 
-        <div class="placeholder-card">
-          <strong>历史记录预留区</strong>
-          <p>后续接入 `ai_runs` 后，可在这里回看、删除和恢复历史回答。</p>
+        <div class="history-preview-list">
+          <article class="history-preview-card muted">
+            <strong>最近生成</strong>
+            <p>接入 `ai_runs` 后显示论文速读、方法拆解、多篇对比等记录。</p>
+          </article>
+          <article class="history-preview-card">
+            <strong>一键回显</strong>
+            <p>点击历史记录后，将回答、来源和建议追问恢复到主对话区。</p>
+          </article>
+          <article class="history-preview-card">
+            <strong>轻量管理</strong>
+            <p>后续支持删除记录、从论文卡片快速进入 AI 速读。</p>
+          </article>
         </div>
       </section>
     </aside>
@@ -313,6 +338,20 @@ const moreTools = [
   { key: "theme", label: "主题设置", disabled: true },
   { key: "help", label: "帮助", disabled: true }
 ];
+
+const taskIconMap = {
+  paper_summary: "速",
+  method_breakdown: "拆",
+  innovation_limits: "新",
+  presentation_outline: "纲",
+  paper_compare: "比"
+};
+
+function taskModeLabel(mode) {
+  if (mode === "single") return "需 1 篇";
+  if (mode === "multi") return "需 2-3 篇";
+  return "0-3 篇";
+}
 
 const selectedIdSet = computed(() => new Set(selectedPaperIds.value));
 
@@ -783,6 +822,14 @@ onMounted(loadInitialData);
   overflow: hidden;
 }
 
+.ai-workbench.drawer-collapsed {
+  grid-template-columns: 82px minmax(0, 1fr);
+}
+
+.ai-workbench.drawer-collapsed .chat-shell {
+  grid-column: 2;
+}
+
 .tool-rail,
 .context-drawer,
 .chat-shell {
@@ -946,6 +993,33 @@ onMounted(loadInitialData);
   font-size: 0.88rem;
 }
 
+.drawer-hero-card {
+  align-items: center;
+  border: 1px solid rgba(190, 215, 223, 0.82);
+  border-radius: 18px;
+  padding: 0.78rem;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(160, 218, 205, 0.36), transparent 38%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(241, 249, 246, 0.9));
+  box-shadow: 0 12px 28px rgba(35, 57, 75, 0.08);
+}
+
+.drawer-hero-card h4 {
+  font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+  font-size: 1.05rem;
+}
+
+.hero-badge {
+  flex: 0 0 auto;
+  border: 1px solid rgba(15, 109, 100, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #0f6d64;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.22rem 0.54rem;
+}
+
 .small-btn {
   padding: 0.32rem 0.58rem;
   border-radius: 9px;
@@ -1034,31 +1108,155 @@ onMounted(loadInitialData);
 .task-list button {
   text-align: left;
   display: grid;
-  gap: 0.22rem;
-  border-radius: 14px;
-  background: #fff;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.68rem;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 250, 0.96));
   color: #23394b;
   border: 1px solid #d5e0e8;
-  padding: 0.7rem;
+  padding: 0.76rem;
+  box-shadow: 0 10px 22px rgba(31, 52, 69, 0.055);
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
 }
 
 .task-list button:hover,
 .task-list button.active {
   background: #e9f6f2;
   border-color: #b7ded1;
+  box-shadow: 0 14px 30px rgba(20, 92, 80, 0.12);
+  transform: translateY(-1px);
 }
 
-.task-list span {
+.task-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: #eff8f5;
+  color: #0f6d64;
+  font-weight: 900;
+  font-size: 1.08rem;
+}
+
+.task-list button.active .task-icon {
+  background: #0f6d64;
+  color: #fff;
+}
+
+.task-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.task-copy strong {
+  color: #1f3445;
+  font-size: 0.98rem;
+}
+
+.task-copy span {
   color: #607789;
   font-size: 0.86rem;
 }
 
+.task-list button > small {
+  align-self: start;
+  border: 1px solid #d5e7e2;
+  border-radius: 999px;
+  color: #587184;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.18rem 0.42rem;
+  white-space: nowrap;
+}
+
 .field-label {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.58rem;
+  border: 1px solid #d5e0e8;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 0.78rem;
   color: #33495a;
   font-size: 0.92rem;
   font-weight: 700;
+  box-shadow: 0 10px 24px rgba(31, 52, 69, 0.06);
+}
+
+.field-label > span {
+  color: #22394c;
+}
+
+.field-label select {
+  min-height: 48px;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.model-section,
+.history-section,
+.tasks-section {
+  align-content: start;
+}
+
+.model-status-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.72rem;
+  align-items: start;
+  border: 1px solid rgba(181, 211, 203, 0.86);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(237, 250, 246, 0.92), rgba(255, 255, 255, 0.86));
+  padding: 0.82rem;
+}
+
+.model-status-card strong,
+.history-preview-card strong {
+  color: #1f3445;
+}
+
+.model-status-card p,
+.history-preview-card p {
+  margin: 0.22rem 0 0;
+  color: #607789;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.model-dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 0.34rem;
+  border-radius: 999px;
+  background: #c6d2dc;
+  box-shadow: 0 0 0 5px rgba(198, 210, 220, 0.18);
+}
+
+.model-dot.ready {
+  background: #16a085;
+  box-shadow: 0 0 0 5px rgba(22, 160, 133, 0.14);
+}
+
+.history-preview-list {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.history-preview-card {
+  border: 1px solid #d5e0e8;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.78rem;
+  box-shadow: 0 10px 24px rgba(31, 52, 69, 0.055);
+}
+
+.history-preview-card.muted {
+  border-style: dashed;
+  background: rgba(251, 253, 255, 0.76);
 }
 
 .placeholder-card,
@@ -1468,6 +1666,10 @@ button:disabled {
     grid-template-columns: 72px minmax(0, 1fr);
   }
 
+  .ai-workbench.drawer-collapsed {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
   .context-drawer {
     position: fixed;
     left: 5vw;
@@ -1483,7 +1685,8 @@ button:disabled {
 }
 
 @media (max-width: 720px) {
-  .ai-workbench {
+  .ai-workbench,
+  .ai-workbench.drawer-collapsed {
     grid-template-columns: 1fr;
   }
 
@@ -1504,7 +1707,8 @@ button:disabled {
     min-width: 70px;
   }
 
-  .chat-shell {
+  .chat-shell,
+  .ai-workbench.drawer-collapsed .chat-shell {
     grid-column: 1;
     min-height: 70vh;
   }
