@@ -455,6 +455,7 @@ nav a.router-link-active {
 }
 
 .read-pill,
+.ai-pill,
 .more-pill {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.55);
@@ -462,6 +463,12 @@ nav a.router-link-active {
   color: #4b55df;
   font-weight: 700;
   padding: 0.38rem 0.8rem;
+}
+
+.ai-pill {
+  background: rgba(229, 247, 240, 0.92);
+  color: #0f6d64;
+  border-color: rgba(15, 109, 100, 0.18);
 }
 
 .more-pill {
@@ -847,6 +854,17 @@ td {
 .reader-shell {
   display: grid;
   gap: 0.9rem;
+}
+
+.reader-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.reader-header .btn-secondary {
+  flex: 0 0 auto;
 }
 
 .reader-grid {

@@ -6,6 +6,7 @@
         <h2>{{ paper.title }}</h2>
         <p>{{ paper.authors || "No authors" }} | {{ paper.conference || "No source" }}</p>
       </div>
+      <button class="btn-secondary" @click="goAcademicAI">学术 AI 分析</button>
     </header>
 
     <section class="card reader-notes-pane">
@@ -190,7 +191,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { GlobalWorkerOptions, TextLayer, getDocument } from "pdfjs-dist/build/pdf.mjs";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -210,6 +211,7 @@ import {
 GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 const route = useRoute();
+const router = useRouter();
 
 const highlightPalette = [
   {
@@ -834,6 +836,13 @@ async function openPaper() {
     // ignore if update fails, page can still be opened
   }
   await loadPaper();
+}
+
+function goAcademicAI() {
+  router.push({
+    name: "academic-ai",
+    query: { paper_id: route.params.id, task: "paper_summary" }
+  });
 }
 
 watch(

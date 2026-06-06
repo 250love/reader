@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 from flask import Flask
 from pymongo import ASCENDING
+from pymongo import DESCENDING
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash
 
@@ -44,6 +45,10 @@ def _create_indexes() -> None:
     _mongo_db.paper_annotations.create_index(
         [("paper_id", ASCENDING), ("user_id", ASCENDING)],
         name="paper_annotations_paper_user_idx",
+    )
+    _mongo_db.ai_runs.create_index(
+        [("user_id", ASCENDING), ("created_at", DESCENDING)],
+        name="ai_runs_user_created_idx",
     )
 
 

@@ -200,4 +200,14 @@ export async function fetchAgentRuns(params = {}) {
   return data.items || [];
 }
 
+export async function fetchAgentRun(id) {
+  const { data } = await api.get(`/agent/runs/${id}`);
+  return data;
+}
+
+export async function deleteAgentRun(id) {
+  const { data } = await api.delete(`/agent/runs/${id}`);
+  return data;
+}
+
 export default api;

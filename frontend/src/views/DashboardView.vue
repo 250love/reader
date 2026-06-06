@@ -124,6 +124,7 @@
           <div class="paper-card-head">
             <div class="paper-head-left">📖 {{ paper.page_progress || "1/23" }}</div>
             <div class="paper-head-right">
+              <button class="ai-pill" @click.stop="goAcademicAI(paper.id)">AI 速读</button>
               <button class="read-pill" @click.stop="goReader(paper.id)">速览</button>
               <button class="more-pill" @click.stop="togglePaperMenu(paper.id, 'card')">•••</button>
             </div>
@@ -219,6 +220,7 @@
               <td class="ops-cell">
                 <div class="list-op-row">
                   <button @click="goReader(paper.id)">打开</button>
+                  <button class="btn-secondary" @click="goAcademicAI(paper.id)">AI 速读</button>
                   <button class="more-pill list-more-btn" @click.stop="togglePaperMenu(paper.id, 'list')">•••</button>
                 </div>
 
@@ -914,6 +916,10 @@ async function submitEditPaper() {
 
 function goReader(id) {
   router.push({ name: "reader", params: { id } });
+}
+
+function goAcademicAI(id) {
+  router.push({ name: "academic-ai", query: { paper_id: id, task: "paper_summary" } });
 }
 
 function goCitations() {

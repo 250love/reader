@@ -156,23 +156,34 @@
         <div class="section-title-row drawer-hero-card">
           <div>
             <h4>历史结果</h4>
-            <p>Phase 5 将在这里显示最近生成记录。</p>
+            <p>最近生成的 AI 回答，可一键回显到主对话区。</p>
           </div>
-          <span class="hero-badge">预留</span>
+          <span class="hero-badge">{{ agentRuns.length }} 条</span>
         </div>
 
-        <div class="history-preview-list">
-          <article class="history-preview-card muted">
-            <strong>最近生成</strong>
-            <p>接入 `ai_runs` 后显示论文速读、方法拆解、多篇对比等记录。</p>
-          </article>
-          <article class="history-preview-card">
-            <strong>一键回显</strong>
-            <p>点击历史记录后，将回答、来源和建议追问恢复到主对话区。</p>
-          </article>
-          <article class="history-preview-card">
-            <strong>轻量管理</strong>
-            <p>后续支持删除记录、从论文卡片快速进入 AI 速读。</p>
+        <div v-if="loadingRuns" class="placeholder-card">
+          <strong>正在加载历史记录...</strong>
+          <p>稍等片刻，最近生成会出现在这里。</p>
+        </div>
+        <p v-else-if="runsError" class="error-text">{{ runsError }}</p>
+        <div v-else-if="agentRuns.length === 0" class="placeholder-card">
+          <strong>暂无历史记录</strong>
+          <p>生成一次回答后，系统会把结果保存到这里，方便回看和继续追问。</p>
+        </div>
+
+        <div v-else class="history-preview-list compact-scroll">
+          <article
+            v-for="run in agentRuns"
+            :key="run.id"
+            class="history-preview-card run-card"
+            @click="restoreRun(run)"
+          >
+            <div>
+              <strong>{{ runTitle(run) }}</strong>
+              <p>{{ runSubtitle(run) }}</p>
+              <small>{{ formatDateTime(run.created_at) }}</small>
+            </div>
+            <button class="btn-secondary small-btn" @click.stop="removeRun(run.id)">删除</button>
           </article>
         </div>
       </section>
@@ -286,7 +297,9 @@ import { computed, nextTick, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import {
+  deleteAgentRun,
   fetchAgentTasks,
+  fetchAgentRuns,
   fetchPapers,
   fetchProviders,
   runAcademicAgent
@@ -309,10 +322,13 @@ const loading = ref(false);
 const dataError = ref("");
 const noticeMessage = ref("");
 const messages = ref([]);
+const agentRuns = ref([]);
 const activeDrawer = ref("context");
 const drawerCollapsed = ref(false);
 const moreMenuOpen = ref(false);
 const messageListRef = ref(null);
+const loadingRuns = ref(false);
+const runsError = ref("");
 
 const contextOptions = reactive({
   include_metadata: true,
@@ -374,6 +390,14 @@ const normalTasks = computed(() => tasks.value.filter((task) => task.key !== "cu
 
 const selectedTaskMeta = computed(() => tasks.value.find((task) => task.key === selectedTask.value));
 
+const taskLabelMap = computed(() => {
+  const labels = {};
+  for (const task of tasks.value) {
+    labels[task.key] = task.label;
+  }
+  return labels;
+});
+
 const activeDrawerTitle = computed(() => {
   const item = railItems.find((entry) => entry.key === activeDrawer.value);
   return item?.label || "工具";
@@ -419,10 +443,23 @@ async function loadInitialData() {
     providers.value = providerRows;
     tasks.value = taskRows;
     applyQueryDefaults();
+    await loadAgentRuns();
   } catch (error) {
     dataError.value = error?.response?.data?.error || "学术 AI 数据加载失败，请稍后重试。";
   } finally {
     loadingData.value = false;
+  }
+}
+
+async function loadAgentRuns() {
+  loadingRuns.value = true;
+  runsError.value = "";
+  try {
+    agentRuns.value = await fetchAgentRuns({ limit: 20 });
+  } catch (error) {
+    runsError.value = error?.response?.data?.error || "历史记录加载失败。";
+  } finally {
+    loadingRuns.value = false;
   }
 }
 
@@ -700,6 +737,7 @@ function makeMessage(role, data) {
     suggestedQuestions: [],
     expandedSources: false,
     payload: null,
+    runId: "",
     ...data
   };
 }
@@ -751,8 +789,10 @@ async function runTask(taskKey, options = {}) {
       loading: false,
       sources: result.sources || [],
       suggestedQuestions: result.suggested_questions || [],
+      runId: result.run_id || "",
       payload
     });
+    await loadAgentRuns();
   } catch (error) {
     Object.assign(assistantMessage, {
       content: error?.response?.data?.error || "学术 AI 调用失败",
@@ -795,6 +835,86 @@ function regenerate(message) {
     queryOverride: message.payload.query || "",
     regenerate: true
   });
+}
+
+function truncateText(value, maxLength = 34) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength)}...`;
+}
+
+function runTitle(run) {
+  const label = taskLabelMap.value[run.task] || run.task || "学术 AI";
+  const firstSource = run.sources?.[0]?.title || "";
+  if (firstSource) return `${truncateText(firstSource, 18)} · ${label}`;
+  if (run.paper_ids?.length) return `${run.paper_ids.length} 篇论文 · ${label}`;
+  return `通用对话 · ${label}`;
+}
+
+function runSubtitle(run) {
+  if (run.query) return truncateText(run.query, 46);
+  const count = Array.isArray(run.paper_ids) ? run.paper_ids.length : 0;
+  if (count > 0) return `${count} 篇论文上下文 · 点击回显回答`;
+  return "未选择论文上下文 · 点击回显回答";
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+async function restoreRun(run) {
+  if (!run) return;
+  selectedTask.value = run.task || selectedTask.value;
+  selectedPaperIds.value = Array.isArray(run.paper_ids) ? run.paper_ids.map(String) : [];
+  selectedProviderId.value = run.provider_id || selectedProviderId.value;
+
+  const taskLabel = taskLabelMap.value[run.task] || "历史结果";
+  const userText = run.query || `历史记录：${taskLabel}`;
+  const payload = {
+    task: run.task,
+    paper_ids: [...selectedPaperIds.value],
+    query: run.query || "",
+    provider_id: run.provider_id || undefined,
+    target_lang: targetLang.value,
+    context_options: { ...contextOptions }
+  };
+
+  messages.value = [
+    makeMessage("user", {
+      label: "历史记录",
+      content: userText
+    }),
+    makeMessage("assistant", {
+      label: taskLabel,
+      content: run.answer || "",
+      sources: run.sources || [],
+      suggestedQuestions: run.suggested_questions || [],
+      payload,
+      runId: run.id || ""
+    })
+  ];
+  noticeMessage.value = "已从历史记录恢复回答。";
+  drawerCollapsed.value = true;
+  await scrollToBottom();
+}
+
+async function removeRun(runId) {
+  if (!runId) return;
+  try {
+    await deleteAgentRun(runId);
+    agentRuns.value = agentRuns.value.filter((run) => run.id !== runId);
+    noticeMessage.value = "历史记录已删除。";
+  } catch (error) {
+    noticeMessage.value = error?.response?.data?.error || "删除历史记录失败。";
+  }
 }
 
 function clearConversation() {
@@ -1252,6 +1372,27 @@ onMounted(loadInitialData);
   background: rgba(255, 255, 255, 0.86);
   padding: 0.78rem;
   box-shadow: 0 10px 24px rgba(31, 52, 69, 0.055);
+}
+
+.run-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  align-items: start;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.run-card:hover {
+  border-color: #b7ded1;
+  box-shadow: 0 14px 30px rgba(20, 92, 80, 0.12);
+  transform: translateY(-1px);
+}
+
+.run-card small {
+  display: block;
+  margin-top: 0.42rem;
+  color: #7a8da0;
 }
 
 .history-preview-card.muted {

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from bson import ObjectId
 
 from app.services.figure_extractor import resolve_local_pdf_path
@@ -437,11 +439,28 @@ def run_academic_task(db, user_id: ObjectId, payload: dict, upload_root: str) ->
     papers_context = "\n\n".join(contexts)
     messages = build_messages(task, query, papers_context, target_lang)
     answer = call_chat_completion(provider, messages, temperature=0.2, timeout=60)
+    suggested_questions = SUGGESTED_QUESTIONS.get(task, SUGGESTED_QUESTIONS["custom_qa"])
+
+    now = datetime.now(UTC)
+    run_doc = {
+        "user_id": user_id,
+        "paper_ids": [paper["_id"] for paper in papers],
+        "task": task,
+        "query": query,
+        "provider_id": provider.get("_id"),
+        "answer": answer,
+        "sources": sources,
+        "suggested_questions": suggested_questions,
+        "created_at": now,
+        "updated_at": now,
+    }
+    inserted = db.ai_runs.insert_one(run_doc)
 
     return {
         "ok": True,
+        "run_id": str(inserted.inserted_id),
         "task": task,
         "answer": answer,
         "sources": sources,
-        "suggested_questions": SUGGESTED_QUESTIONS.get(task, SUGGESTED_QUESTIONS["custom_qa"]),
+        "suggested_questions": suggested_questions,
     }
