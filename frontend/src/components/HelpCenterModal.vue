@@ -99,6 +99,7 @@ onBeforeUnmount(() => {
 
 .help-modal {
   width: min(1080px, 94vw);
+  height: min(86vh, 820px);
   max-height: 86vh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
@@ -133,6 +134,7 @@ onBeforeUnmount(() => {
 .help-nav {
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   display: grid;
   align-content: start;
   gap: 0.28rem;
@@ -226,10 +228,42 @@ onBeforeUnmount(() => {
 .help-scroll {
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: 1rem 1.2rem 1.25rem;
   display: grid;
   align-content: start;
   gap: 0.82rem;
+}
+
+.help-nav,
+.help-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--primary), var(--muted) 55%) color-mix(in srgb, var(--surface-muted), transparent 20%);
+}
+
+.help-nav::-webkit-scrollbar,
+.help-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.help-nav::-webkit-scrollbar-track,
+.help-scroll::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--surface-muted), transparent 18%);
+  border-radius: 999px;
+}
+
+.help-nav::-webkit-scrollbar-thumb,
+.help-scroll::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 2px solid color-mix(in srgb, var(--surface), transparent 15%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary), var(--muted) 55%);
+}
+
+.help-nav::-webkit-scrollbar-thumb:hover,
+.help-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
 }
 
 .help-block {
@@ -313,9 +347,31 @@ onBeforeUnmount(() => {
   border-color: rgba(252, 165, 165, 0.34);
 }
 
+:global(html[data-theme="dark"]) .help-nav,
+:global(html[data-theme="dark"]) .help-scroll {
+  scrollbar-color: rgba(94, 234, 212, 0.72) rgba(226, 232, 240, 0.08);
+}
+
+:global(html[data-theme="dark"]) .help-nav::-webkit-scrollbar-track,
+:global(html[data-theme="dark"]) .help-scroll::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.08);
+}
+
+:global(html[data-theme="dark"]) .help-nav::-webkit-scrollbar-thumb,
+:global(html[data-theme="dark"]) .help-scroll::-webkit-scrollbar-thumb {
+  border-color: #0f1c2f;
+  background: rgba(94, 234, 212, 0.72);
+}
+
+:global(html[data-theme="dark"]) .help-nav::-webkit-scrollbar-thumb:hover,
+:global(html[data-theme="dark"]) .help-scroll::-webkit-scrollbar-thumb:hover {
+  background: #99f6e4;
+}
+
 @media (max-width: 760px) {
   .help-modal {
     grid-template-columns: 1fr;
+    height: min(88vh, 820px);
     max-height: 88vh;
   }
 
@@ -328,6 +384,7 @@ onBeforeUnmount(() => {
   .help-nav {
     display: flex;
     overflow-x: auto;
+    overflow-y: hidden;
     padding-bottom: 0.2rem;
   }
 
