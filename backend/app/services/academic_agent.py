@@ -36,7 +36,7 @@ ACADEMIC_TASKS = {
     "custom_qa": {
         "label": "自定义提问",
         "mode": "single_or_multi",
-        "description": "基于选中论文回答自定义问题",
+        "description": "基于选中论文或通用学术场景回答自定义问题",
     },
 }
 
@@ -277,6 +277,7 @@ def build_paper_context(
 
 def build_messages(task: str, query: str, papers_context: str, target_lang: str) -> list[dict]:
     language_hint = target_lang or "zh-CN"
+    has_paper_context = bool(str(papers_context or "").strip())
     prompts = {
         "paper_summary": (
             "你是一个严谨的学术论文阅读助手。请根据提供的论文上下文，用中文完成论文速读。\n\n"
@@ -339,23 +340,27 @@ def build_messages(task: str, query: str, papers_context: str, target_lang: str)
         "custom_qa": (
             "你是一个严谨的学术论文问答助手。请基于用户选中的论文上下文回答问题。\n\n"
             "要求：\n"
-            "1. 只基于提供的论文上下文回答。\n"
-            "2. 如果上下文不足，请明确说明无法确定。\n"
+            "1. 如果提供了论文上下文，请优先基于上下文回答。\n"
+            "2. 如果没有选择论文或上下文不足，请明确说明，并以通用学术助手身份回答。\n"
             "3. 回答要结构清晰，适合学生理解。\n"
             "4. 如果涉及多篇论文，请指出不同论文之间的差异。\n\n"
             f"用户问题：\n{query}\n\n"
-            f"论文上下文：\n{papers_context}"
+            f"论文上下文：\n{papers_context or '未选择论文上下文。'}"
         ),
     }
 
+    system_content = (
+        "You are a careful academic assistant. Use only the supplied paper context. "
+        f"Answer in {language_hint}. Do not invent unsupported facts."
+    )
+    if task == "custom_qa" and not has_paper_context:
+        system_content = (
+            "You are a careful academic assistant. No paper context was selected for this turn, "
+            f"so answer as a general academic helper in {language_hint}. Be clear when your answer is not paper-specific."
+        )
+
     return [
-        {
-            "role": "system",
-            "content": (
-                "You are a careful academic assistant. Use only the supplied paper context. "
-                f"Answer in {language_hint}. Do not invent unsupported facts."
-            ),
-        },
+        {"role": "system", "content": system_content},
         {"role": "user", "content": prompts[task]},
     ]
 
@@ -372,8 +377,8 @@ def _validate_task(task: str, paper_ids: list, query: str) -> None:
         raise AcademicAgentError("this task requires exactly 1 paper", 400)
     if mode == "multi" and count not in {2, 3}:
         raise AcademicAgentError("paper_compare requires 2-3 papers", 400)
-    if mode == "single_or_multi" and count not in {1, 2, 3}:
-        raise AcademicAgentError("custom_qa requires 1-3 papers", 400)
+    if mode == "single_or_multi" and count > 3:
+        raise AcademicAgentError("custom_qa can include at most 3 papers", 400)
     if task == "custom_qa" and not query.strip():
         raise AcademicAgentError("query is required for custom_qa", 400)
 

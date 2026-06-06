@@ -238,7 +238,7 @@
       <footer class="composer-wrap">
         <p v-if="noticeMessage" class="notice-text">{{ noticeMessage }}</p>
         <div class="composer-summary">
-          <span>{{ selectedPaperIds.length }} 篇论文</span>
+          <span>{{ selectedPaperSummary }}</span>
           <span>{{ contextSummary }}</span>
           <span>{{ providerSummary }}</span>
         </div>
@@ -353,6 +353,10 @@ const providerSummary = computed(() => {
   return `${activeProvider.value.name} / ${activeProvider.value.model}`;
 });
 
+const selectedPaperSummary = computed(() => (
+  selectedPaperIds.value.length > 0 ? `${selectedPaperIds.value.length} 篇论文` : "未选择论文 · 通用对话"
+));
+
 const contextSummary = computed(() => {
   const enabled = [];
   if (contextOptions.include_metadata) enabled.push("文献信息");
@@ -434,7 +438,7 @@ function validateBeforeRun(taskKey, queryText = customQuery.value) {
   if (!providers.value.length) return "请先到账号设置中配置 LLM Provider。";
   if (task.mode === "single" && count !== 1) return "该任务需要选择 1 篇论文。";
   if (task.mode === "multi" && (count < 2 || count > 3)) return "多篇对比需要选择 2-3 篇论文。";
-  if (task.mode === "single_or_multi" && (count < 1 || count > 3)) return "自定义提问需要选择 1-3 篇论文。";
+  if (task.mode === "single_or_multi" && count > 3) return "自定义提问最多选择 3 篇论文。";
   if (taskKey === "custom_qa" && !queryText.trim()) return "请输入自定义问题。";
   return "";
 }
@@ -454,10 +458,30 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function sanitizeUrl(url) {
+  const clean = String(url || "").trim();
+  if (/^(https?:|mailto:)/i.test(clean)) return escapeHtml(clean);
+  if (clean.startsWith("#") || clean.startsWith("/")) return escapeHtml(clean);
+  return "";
+}
+
 function renderInlineMarkdown(text) {
-  return escapeHtml(text)
+  let out = escapeHtml(text);
+  out = out.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt, url) => {
+    const safeUrl = sanitizeUrl(url);
+    return safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noreferrer">${alt || safeUrl}</a>` : alt;
+  });
+  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, url) => {
+    const safeUrl = sanitizeUrl(url);
+    return safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noreferrer">${label}</a>` : label;
+  });
+  return out
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>");
+    .replace(/__(.+?)__/g, "<strong>$1</strong>")
+    .replace(/~~(.+?)~~/g, "<del>$1</del>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+    .replace(/(^|[^_])_([^_\n]+)_/g, "$1<em>$2</em>");
 }
 
 function isTableSeparator(line) {
@@ -505,6 +529,7 @@ function renderMarkdown(markdown) {
   let inCode = false;
   let codeLines = [];
   let listItems = [];
+  let listType = "";
   let paragraph = [];
 
   function flushParagraph() {
@@ -515,8 +540,10 @@ function renderMarkdown(markdown) {
 
   function flushList() {
     if (!listItems.length) return;
-    html.push(`<ul>${listItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ul>`);
+    const tag = listType || "ul";
+    html.push(`<${tag}>${listItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</${tag}>`);
     listItems = [];
+    listType = "";
   }
 
   function flushCode() {
@@ -564,19 +591,49 @@ function renderMarkdown(markdown) {
       continue;
     }
 
+    if (/^[-*_]{3,}$/.test(trimmed)) {
+      flushParagraph();
+      flushList();
+      html.push("<hr />");
+      index += 1;
+      continue;
+    }
+
+    const quote = trimmed.match(/^>\s?(.+)$/);
+    if (quote) {
+      flushParagraph();
+      flushList();
+      const quoteLines = [];
+      while (index < lines.length) {
+        const quoteMatch = lines[index].trim().match(/^>\s?(.+)$/);
+        if (!quoteMatch) break;
+        quoteLines.push(quoteMatch[1]);
+        index += 1;
+      }
+      html.push(`<blockquote>${renderInlineMarkdown(quoteLines.join(" "))}</blockquote>`);
+      continue;
+    }
+
     const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
     if (heading) {
       flushParagraph();
       flushList();
-      const level = heading[1].length + 2;
+      const level = Math.min(6, heading[1].length + 2);
       html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
       index += 1;
       continue;
     }
 
-    const list = trimmed.match(/^[-*]\s+(.+)$/) || trimmed.match(/^\d+\.\s+(.+)$/);
+    const unordered = trimmed.match(/^[-*]\s+(.+)$/);
+    const ordered = trimmed.match(/^\d+\.\s+(.+)$/);
+    const list = unordered || ordered;
     if (list) {
       flushParagraph();
+      const currentType = ordered ? "ol" : "ul";
+      if (listType && listType !== currentType) {
+        flushList();
+      }
+      listType = currentType;
       listItems.push(list[1]);
       index += 1;
       continue;
@@ -1180,6 +1237,10 @@ onMounted(loadInitialData);
   word-break: break-word;
 }
 
+.message-row.user .markdown-body {
+  color: #fff;
+}
+
 .markdown-body :deep(p) {
   margin: 0.35rem 0;
 }
@@ -1197,8 +1258,18 @@ onMounted(loadInitialData);
   padding-left: 1.25rem;
 }
 
+.markdown-body :deep(ol) {
+  margin: 0.35rem 0 0.6rem;
+  padding-left: 1.45rem;
+}
+
 .markdown-body :deep(li) {
   margin: 0.18rem 0;
+}
+
+.markdown-body :deep(a) {
+  color: #0b6a61;
+  font-weight: 700;
 }
 
 .markdown-body :deep(code) {
@@ -1208,6 +1279,16 @@ onMounted(loadInitialData);
   padding: 0.08rem 0.28rem;
   font-family: "Cascadia Code", "Consolas", monospace;
   font-size: 0.92em;
+}
+
+.message-row.user .markdown-body :deep(a) {
+  color: #eafffb;
+}
+
+.message-row.user .markdown-body :deep(code) {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
 }
 
 .markdown-body :deep(.code-block) {
@@ -1220,10 +1301,40 @@ onMounted(loadInitialData);
   padding: 0.72rem;
 }
 
+.message-row.user .markdown-body :deep(.code-block) {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .markdown-body :deep(.code-block code) {
   border: 0;
   background: transparent;
   padding: 0;
+}
+
+.markdown-body :deep(blockquote) {
+  margin: 0.6rem 0;
+  border-left: 4px solid #b8dcd2;
+  background: #f5faf8;
+  border-radius: 0 10px 10px 0;
+  padding: 0.52rem 0.72rem;
+  color: #3f5a6d;
+}
+
+.message-row.user .markdown-body :deep(blockquote) {
+  border-left-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.markdown-body :deep(hr) {
+  border: 0;
+  border-top: 1px solid #dce6ec;
+  margin: 0.85rem 0;
+}
+
+.message-row.user .markdown-body :deep(hr) {
+  border-top-color: rgba(255, 255, 255, 0.35);
 }
 
 .markdown-body :deep(.markdown-table-wrap) {
