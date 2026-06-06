@@ -8,7 +8,7 @@
 
       <nav class="library-nav">
         <button class="nav-item active">文献库管理</button>
-        <button class="nav-item">学术 AI（预留）</button>
+        <button class="nav-item" @click="goAcademicAIWorkspace">学术 AI</button>
         <button class="nav-item" @click="goCitations">引用助手</button>
       </nav>
 
@@ -920,6 +920,10 @@ function goReader(id) {
 
 function goAcademicAI(id) {
   router.push({ name: "academic-ai", query: { paper_id: id, task: "paper_summary" } });
+}
+
+function goAcademicAIWorkspace() {
+  router.push({ name: "academic-ai" });
 }
 
 function goCitations() {
