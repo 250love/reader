@@ -580,6 +580,63 @@ onMounted(loadPapers);
   padding: 0.5rem 0.62rem;
 }
 
+:global(html[data-theme="dark"]) .citation-header p,
+:global(html[data-theme="dark"]) .panel-head p,
+:global(html[data-theme="dark"]) .citation-paper-card p,
+:global(html[data-theme="dark"]) .citation-paper-card span,
+:global(html[data-theme="dark"]) .empty-hint {
+  color: var(--muted);
+}
+
+:global(html[data-theme="dark"]) .format-control,
+:global(html[data-theme="dark"]) .citation-paper-card,
+:global(html[data-theme="dark"]) .metadata-editor,
+:global(html[data-theme="dark"]) .citation-result-card {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+:global(html[data-theme="dark"]) .format-control select,
+:global(html[data-theme="dark"]) .citation-paper-card h4,
+:global(html[data-theme="dark"]) .citation-result-card p,
+:global(html[data-theme="dark"]) .metadata-grid label,
+:global(html[data-theme="dark"]) .metadata-citation-text {
+  color: var(--text);
+}
+
+:global(html[data-theme="dark"]) .panel-head {
+  border-color: var(--line);
+}
+
+:global(html[data-theme="dark"]) .citation-paper-card.selected {
+  border-color: var(--primary-soft-border);
+  background: var(--primary-soft);
+}
+
+:global(html[data-theme="dark"]) .metadata-pill {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.28);
+  color: #facc15;
+}
+
+:global(html[data-theme="dark"]) .metadata-pill.ready,
+:global(html[data-theme="dark"]) .notice-text {
+  background: var(--primary-soft);
+  border-color: var(--primary-soft-border);
+  color: var(--primary);
+}
+
+:global(html[data-theme="dark"]) .error-text {
+  color: var(--danger);
+}
+
+:global(html[data-theme="dark"]) .citation-output-panel textarea {
+  background: #0f172a;
+  border-color: var(--line);
+  color: var(--text);
+}
+
 @media (max-width: 980px) {
   .citation-header {
     flex-direction: column;

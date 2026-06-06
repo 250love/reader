@@ -1373,6 +1373,79 @@ onBeforeUnmount(() => {
   background: rgba(94, 129, 255, 0.34);
 }
 
+:global(html[data-theme="dark"]) .reader-notes-pane,
+:global(html[data-theme="dark"]) .reader-main-pane,
+:global(html[data-theme="dark"]) .reader-translate-pane,
+:global(html[data-theme="dark"]) .reader-side-section,
+:global(html[data-theme="dark"]) .note-card,
+:global(html[data-theme="dark"]) .translate-card,
+:global(html[data-theme="dark"]) .figure-card,
+:global(html[data-theme="dark"]) .selection-menu {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
+  border-color: var(--line);
+  color: var(--text);
+  box-shadow: 0 10px 24px var(--shadow);
+}
+
+:global(html[data-theme="dark"]) .reader-main-toolbar,
+:global(html[data-theme="dark"]) .translate-pane-head {
+  border-color: var(--line);
+}
+
+:global(html[data-theme="dark"]) .lang-chip {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+:global(html[data-theme="dark"]) .lang-chip input,
+:global(html[data-theme="dark"]) .note-card textarea,
+:global(html[data-theme="dark"]) .figure-meta textarea {
+  color: var(--text);
+}
+
+:global(html[data-theme="dark"]) .reader-canvas-wrap {
+  background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+  border-color: var(--line);
+}
+
+:global(html[data-theme="dark"]) .reader-state,
+:global(html[data-theme="dark"]) .empty-hint,
+:global(html[data-theme="dark"]) .translate-pane-head span,
+:global(html[data-theme="dark"]) .figure-meta-row,
+:global(html[data-theme="dark"]) .note-card header,
+:global(html[data-theme="dark"]) .translate-card header,
+:global(html[data-theme="dark"]) .translate-card .source-text {
+  color: var(--muted);
+}
+
+:global(html[data-theme="dark"]) .figure-notice {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.28);
+  color: #facc15;
+}
+
+:global(html[data-theme="dark"]) .figure-error,
+:global(html[data-theme="dark"]) .reader-state.error {
+  color: var(--danger);
+}
+
+:global(html[data-theme="dark"]) .figure-preview-btn,
+:global(html[data-theme="dark"]) .figure-preview-btn img {
+  background: #0f172a;
+  border-color: var(--line);
+}
+
+:global(html[data-theme="dark"]) .note-card blockquote,
+:global(html[data-theme="dark"]) .translate-card .result-text {
+  background: var(--primary-soft);
+  color: var(--text);
+}
+
+:global(html[data-theme="dark"]) :deep(.reader-pdf-page) {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
+}
+
 @media (max-width: 1480px) {
   .reader-workspace {
     grid-template-columns: minmax(0, 1fr) 500px;

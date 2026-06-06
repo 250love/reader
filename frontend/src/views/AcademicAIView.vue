@@ -2203,6 +2203,116 @@ button:disabled {
   cursor: not-allowed;
 }
 
+:global(html[data-theme="dark"]) .ai-workbench,
+:global(html[data-theme="dark"]) .tool-rail,
+:global(html[data-theme="dark"]) .context-drawer,
+:global(html[data-theme="dark"]) .chat-shell,
+:global(html[data-theme="dark"]) .chat-topbar,
+:global(html[data-theme="dark"]) .composer-wrap,
+:global(html[data-theme="dark"]) .composer-box,
+:global(html[data-theme="dark"]) .drawer-hero-card,
+:global(html[data-theme="dark"]) .paper-option,
+:global(html[data-theme="dark"]) .task-list button,
+:global(html[data-theme="dark"]) .model-status-card,
+:global(html[data-theme="dark"]) .placeholder-card,
+:global(html[data-theme="dark"]) .history-preview-card,
+:global(html[data-theme="dark"]) .source-item,
+:global(html[data-theme="dark"]) .run-context-menu,
+:global(html[data-theme="dark"]) .archive-dialog,
+:global(html[data-theme="dark"]) .archived-run-card {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
+  border-color: var(--line);
+  color: var(--text);
+  box-shadow: 0 10px 24px var(--shadow);
+}
+
+:global(html[data-theme="dark"]) .chat-shell {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(45, 212, 191, 0.12), transparent 28%),
+    var(--surface);
+}
+
+:global(html[data-theme="dark"]) .tool-rail button,
+:global(html[data-theme="dark"]) .drawer-close,
+:global(html[data-theme="dark"]) .soft-input,
+:global(html[data-theme="dark"]) .field-label select,
+:global(html[data-theme="dark"]) .archive-open-btn,
+:global(html[data-theme="dark"]) .composer-box textarea {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+:global(html[data-theme="dark"]) .rail-nav button.active,
+:global(html[data-theme="dark"]) .rail-nav button:hover,
+:global(html[data-theme="dark"]) .paper-option.selected,
+:global(html[data-theme="dark"]) .task-list button.active,
+:global(html[data-theme="dark"]) .task-list button:hover,
+:global(html[data-theme="dark"]) .history-preview-card.active,
+:global(html[data-theme="dark"]) .history-preview-card:hover,
+:global(html[data-theme="dark"]) .archive-open-btn:hover,
+:global(html[data-theme="dark"]) .suggestion-grid button:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary-soft-border);
+  color: var(--primary);
+}
+
+:global(html[data-theme="dark"]) .section-title-row p,
+:global(html[data-theme="dark"]) .paper-option em,
+:global(html[data-theme="dark"]) .paper-option small,
+:global(html[data-theme="dark"]) .task-copy span,
+:global(html[data-theme="dark"]) .model-status-card p,
+:global(html[data-theme="dark"]) .placeholder-card p,
+:global(html[data-theme="dark"]) .history-preview-card p,
+:global(html[data-theme="dark"]) .history-preview-card small,
+:global(html[data-theme="dark"]) .empty-state p,
+:global(html[data-theme="dark"]) .suggestion-grid span,
+:global(html[data-theme="dark"]) .message-meta,
+:global(html[data-theme="dark"]) .composer-summary,
+:global(html[data-theme="dark"]) .source-item span,
+:global(html[data-theme="dark"]) .muted-text {
+  color: var(--muted);
+}
+
+:global(html[data-theme="dark"]) .message-row.assistant .message-bubble,
+:global(html[data-theme="dark"]) .suggestion-grid button {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+:global(html[data-theme="dark"]) .markdown-body {
+  color: var(--text);
+}
+
+:global(html[data-theme="dark"]) .markdown-body :deep(a),
+:global(html[data-theme="dark"]) .loading-text {
+  color: var(--primary);
+}
+
+:global(html[data-theme="dark"]) .markdown-body :deep(code),
+:global(html[data-theme="dark"]) .markdown-body :deep(.code-block),
+:global(html[data-theme="dark"]) .markdown-body :deep(table),
+:global(html[data-theme="dark"]) .markdown-body :deep(blockquote) {
+  background: #0f172a;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+:global(html[data-theme="dark"]) .markdown-body :deep(th) {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+:global(html[data-theme="dark"]) .composer-summary span {
+  background: rgba(15, 23, 42, 0.58);
+  border-color: var(--line);
+}
+
+:global(html[data-theme="dark"]) .error-text,
+:global(html[data-theme="dark"]) .warning-text {
+  color: var(--danger);
+}
+
 @media (max-width: 1080px) {
   .ai-workbench {
     grid-template-columns: 72px minmax(0, 1fr);

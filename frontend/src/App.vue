@@ -13,6 +13,15 @@
           <RouterLink :to="{ name: 'academic-ai' }">学术 AI</RouterLink>
         </nav>
 
+        <button
+          class="theme-toggle-btn"
+          :title="isDarkTheme ? '切换到白天模式' : '切换到黑夜模式'"
+          @click="toggleTheme"
+        >
+          <span>{{ isDarkTheme ? "☀️" : "🌙" }}</span>
+          <small>{{ isDarkTheme ? "白天" : "黑夜" }}</small>
+        </button>
+
         <div class="user-entry-wrap" ref="menuRootRef">
           <button class="user-entry-btn" @click="toggleMenu">
             {{ userInitial }}
@@ -49,14 +58,17 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 
 import { clearAuth, getUser, isAuthed } from "@/services/auth";
+import { THEME_CHANGE_EVENT, THEMES, getStoredTheme, setStoredTheme } from "@/services/theme";
 
 const route = useRoute();
 const router = useRouter();
 const menuOpen = ref(false);
 const menuRootRef = ref(null);
+const currentTheme = ref(getStoredTheme());
 
 const currentUser = computed(() => getUser() || {});
 const showTopNav = computed(() => route.name !== "auth" && isAuthed());
+const isDarkTheme = computed(() => currentTheme.value === THEMES.DARK);
 
 const userInitial = computed(() => {
   const source =
@@ -89,6 +101,11 @@ function closeMenu() {
   menuOpen.value = false;
 }
 
+function toggleTheme() {
+  const nextTheme = isDarkTheme.value ? THEMES.LIGHT : THEMES.DARK;
+  currentTheme.value = setStoredTheme(nextTheme);
+}
+
 function handleDocumentClick(event) {
   if (!menuOpen.value) return;
   const root = menuRootRef.value;
@@ -96,6 +113,10 @@ function handleDocumentClick(event) {
   if (!root.contains(event.target)) {
     closeMenu();
   }
+}
+
+function handleThemeChange(event) {
+  currentTheme.value = event?.detail?.theme || getStoredTheme();
 }
 
 function goSettings() {
@@ -111,10 +132,12 @@ function onLogout() {
 
 onMounted(() => {
   document.addEventListener("click", handleDocumentClick);
+  window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleDocumentClick);
+  window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
 });
 </script>
 
@@ -134,17 +157,45 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-height: 44px;
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--card), white 14%);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.48rem 0.78rem;
+  box-shadow: 0 6px 14px var(--shadow);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary-soft-border);
+  color: var(--primary);
+}
+
+.theme-toggle-btn span {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.theme-toggle-btn small {
+  font-weight: 700;
+}
+
 .user-entry-btn {
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  border: 1px solid #cfdde6;
-  background: radial-gradient(circle at 35% 30%, #f8fdff 0%, #e7eff5 100%);
-  color: #3c5568;
+  border: 1px solid var(--line);
+  background: radial-gradient(circle at 35% 30%, var(--surface-soft) 0%, var(--card) 100%);
+  color: var(--muted);
   font-weight: 700;
   font-size: 1.05rem;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(40, 63, 78, 0.14);
+  box-shadow: 0 6px 14px var(--shadow);
 }
 
 .user-entry-menu {
@@ -152,10 +203,10 @@ onBeforeUnmount(() => {
   top: calc(100% + 0.6rem);
   right: 0;
   width: min(286px, 90vw);
-  background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%);
-  border: 1px solid #d7dee7;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
+  border: 1px solid var(--line);
   border-radius: 16px;
-  box-shadow: 0 18px 42px rgba(17, 32, 48, 0.18);
+  box-shadow: 0 18px 42px var(--shadow);
   padding: 0.82rem;
   z-index: 100;
 }
@@ -167,9 +218,9 @@ onBeforeUnmount(() => {
   top: -8px;
   width: 14px;
   height: 14px;
-  background: #fff;
-  border-top: 1px solid #d7dee7;
-  border-left: 1px solid #d7dee7;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
   transform: rotate(45deg);
 }
 
@@ -182,7 +233,7 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
-  color: #1e2530;
+  color: var(--text);
   letter-spacing: 0.015em;
 }
 
@@ -192,8 +243,8 @@ onBeforeUnmount(() => {
   align-items: center;
   border-radius: 7px;
   padding: 0.2rem 0.42rem;
-  background: #d6f4e7;
-  color: #0d7556;
+  background: var(--primary-soft);
+  color: var(--primary);
   font-weight: 700;
   font-size: 0.72rem;
 }
@@ -201,12 +252,12 @@ onBeforeUnmount(() => {
 .menu-meta {
   margin: 0;
   font-size: 0.8rem;
-  color: #5f7387;
+  color: var(--muted);
 }
 
 .menu-divider {
   margin: 0.66rem 0 0.5rem;
-  border-top: 1px solid #e2e6ec;
+  border-top: 1px solid var(--line);
 }
 
 .menu-action {
@@ -218,13 +269,13 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #27394b;
+  color: var(--text);
   cursor: pointer;
 }
 
 .menu-action:hover {
-  background: #eef4fa;
-  color: #183f63;
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 
 .menu-action.danger {
@@ -232,8 +283,8 @@ onBeforeUnmount(() => {
 }
 
 .menu-action.danger:hover {
-  background: #fff0f0;
-  color: #7c2020;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 @media (max-width: 980px) {

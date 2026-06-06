@@ -115,6 +115,26 @@
               <h4>安全提醒</h4>
               <p>建议定期更换密码，并开启双重验证（后续可扩展）。</p>
             </article>
+            <article class="appearance-card">
+              <h4>外观设置</h4>
+              <p>当前主题：{{ isDarkTheme ? "黑夜模式" : "白天模式" }}。主题选择会保存在本地。</p>
+              <div class="appearance-actions">
+                <button
+                  class="btn-secondary"
+                  :class="{ active: currentTheme === THEMES.LIGHT }"
+                  @click="chooseTheme(THEMES.LIGHT)"
+                >
+                  ☀️ 白天模式
+                </button>
+                <button
+                  class="btn-secondary"
+                  :class="{ active: currentTheme === THEMES.DARK }"
+                  @click="chooseTheme(THEMES.DARK)"
+                >
+                  🌙 黑夜模式
+                </button>
+              </div>
+            </article>
           </div>
         </section>
       </div>
@@ -123,11 +143,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 
 import { createProvider, fetchMe, fetchProviders } from "@/services/api";
 import { getUser } from "@/services/auth";
+import { THEME_CHANGE_EVENT, THEMES, getStoredTheme, setStoredTheme } from "@/services/theme";
 
 const tabs = [
   { key: "accounts", label: "已绑定账号" },
@@ -140,6 +161,7 @@ const activeTab = ref("accounts");
 const providers = ref([]);
 const user = ref(getUser() || {});
 const route = useRoute();
+const currentTheme = ref(getStoredTheme());
 
 const form = reactive({
   name: "",
@@ -150,6 +172,7 @@ const form = reactive({
 });
 
 const displayName = computed(() => user.value.display_name || user.value.username || "用户");
+const isDarkTheme = computed(() => currentTheme.value === THEMES.DARK);
 
 const userInitial = computed(() => {
   const source = user.value.display_name || user.value.username || user.value.email || "U";
@@ -193,11 +216,24 @@ async function onCreateProvider() {
   await loadProviders();
 }
 
+function chooseTheme(theme) {
+  currentTheme.value = setStoredTheme(theme);
+}
+
+function handleThemeChange(event) {
+  currentTheme.value = event?.detail?.theme || getStoredTheme();
+}
+
 onMounted(async () => {
+  window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
   const requestedTab = String(route.query.tab || "");
   if (tabs.some((item) => item.key === requestedTab)) {
     activeTab.value = requestedTab;
   }
   await Promise.all([loadProviders(), loadUser()]);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
 });
 </script>
