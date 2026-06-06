@@ -35,7 +35,11 @@
     </header>
 
     <main>
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <KeepAlive include="AcademicAIView">
+          <component :is="Component" />
+        </KeepAlive>
+      </RouterView>
     </main>
   </div>
 </template>

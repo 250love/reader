@@ -329,7 +329,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import {
@@ -342,6 +342,8 @@ import {
   runAcademicAgent,
   updateAgentRun
 } from "@/services/api";
+
+defineOptions({ name: "AcademicAIView" });
 
 const route = useRoute();
 
@@ -379,6 +381,7 @@ const runMenu = reactive({
   runId: "",
   scope: "active"
 });
+const lastConsumedQueryKey = ref("");
 
 const contextOptions = reactive({
   include_metadata: true,
@@ -540,15 +543,29 @@ function closeArchivedDialog() {
   closeRunMenu();
 }
 
-function applyQueryDefaults() {
+function currentQueryKey() {
   const paperId = String(route.query.paper_id || "").trim();
   const task = String(route.query.task || "").trim();
+  return paperId || task ? `${paperId}|${task}` : "";
+}
+
+function applyQueryDefaults(options = {}) {
+  const queryKey = currentQueryKey();
+  if (!queryKey) return;
+  if (!options.force && queryKey === lastConsumedQueryKey.value) return;
+
+  const paperId = String(route.query.paper_id || "").trim();
+  const task = String(route.query.task || "").trim();
+  clearConversation();
   if (paperId && papers.value.some((paper) => paper.id === paperId)) {
     selectedPaperIds.value = [paperId];
   }
   if (task && tasks.value.some((item) => item.key === task)) {
     selectedTask.value = task;
   }
+  activeDrawer.value = "context";
+  drawerCollapsed.value = false;
+  lastConsumedQueryKey.value = queryKey;
 }
 
 function openDrawer(key) {
@@ -1214,6 +1231,14 @@ function startNewChat() {
   activeDrawer.value = "context";
   drawerCollapsed.value = false;
 }
+
+watch(
+  () => currentQueryKey(),
+  (queryKey, previousQueryKey) => {
+    if (!papers.value.length && !tasks.value.length) return;
+    applyQueryDefaults({ force: Boolean(queryKey && !previousQueryKey) });
+  }
+);
 
 onMounted(loadInitialData);
 </script>
