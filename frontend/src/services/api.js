@@ -183,4 +183,21 @@ export async function createProvider(payload) {
   return data;
 }
 
+export async function fetchAgentTasks() {
+  const { data } = await api.get("/agent/tasks");
+  return data.items || [];
+}
+
+export async function runAcademicAgent(payload) {
+  const { data } = await api.post("/agent/run", payload, {
+    timeout: 60000
+  });
+  return data;
+}
+
+export async function fetchAgentRuns(params = {}) {
+  const { data } = await api.get("/agent/runs", { params });
+  return data.items || [];
+}
+
 export default api;

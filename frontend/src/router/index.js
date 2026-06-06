@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import AuthView from "@/views/AuthView.vue";
+import AcademicAIView from "@/views/AcademicAIView.vue";
 import CitationAssistantView from "@/views/CitationAssistantView.vue";
 import DashboardView from "@/views/DashboardView.vue";
 import ReaderView from "@/views/ReaderView.vue";
@@ -20,6 +21,12 @@ const router = createRouter({
       path: "/citations",
       name: "citations",
       component: CitationAssistantView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: "/academic-ai",
+      name: "academic-ai",
+      component: AcademicAIView,
       meta: { requiresAuth: true }
     },
     {

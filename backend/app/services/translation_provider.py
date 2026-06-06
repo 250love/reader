@@ -1,23 +1,9 @@
 import hashlib
 from datetime import datetime, UTC
 
-import requests
 from bson import ObjectId
 
-from app.utils.object_id import parse_object_id
-
-
-def _pick_provider(db, user_id: ObjectId, provider_id: str | None) -> dict | None:
-    if provider_id:
-        provider_oid = parse_object_id(provider_id)
-        if provider_oid:
-            return db.llm_providers.find_one({"_id": provider_oid, "user_id": user_id})
-        return None
-
-    default_provider = db.llm_providers.find_one({"user_id": user_id, "is_default": True})
-    if default_provider:
-        return default_provider
-    return db.llm_providers.find_one({"user_id": user_id})
+from app.services.llm_client import call_chat_completion, pick_provider
 
 
 def _make_hash(text: str, target_lang: str, provider_id: ObjectId | None, user_id: ObjectId) -> str:
@@ -25,25 +11,10 @@ def _make_hash(text: str, target_lang: str, provider_id: ObjectId | None, user_i
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _build_completion_url(base_url: str) -> str:
-    clean = base_url.rstrip("/")
-    if clean.endswith("/chat/completions"):
-        return clean
-    if clean.endswith("/v1"):
-        return f"{clean}/chat/completions"
-    return f"{clean}/v1/chat/completions"
-
-
 def _call_llm_translate(provider: dict, text: str, target_lang: str) -> str:
-    url = _build_completion_url(provider["base_url"])
-    headers = {
-        "Authorization": f"Bearer {provider['api_key']}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": provider["model"],
-        "temperature": 0.2,
-        "messages": [
+    return call_chat_completion(
+        provider,
+        [
             {
                 "role": "system",
                 "content": (
@@ -55,16 +26,13 @@ def _call_llm_translate(provider: dict, text: str, target_lang: str) -> str:
                 "content": f"Translate the following to {target_lang}:\n\n{text}",
             },
         ],
-    }
-
-    response = requests.post(url, headers=headers, json=payload, timeout=40)
-    response.raise_for_status()
-    data = response.json()
-    return data["choices"][0]["message"]["content"].strip()
+        temperature=0.2,
+        timeout=40,
+    )
 
 
 def translate_text(db, user_id: ObjectId, text: str, target_lang: str, provider_id: str | None = None) -> str:
-    provider = _pick_provider(db, user_id, provider_id)
+    provider = pick_provider(db, user_id, provider_id)
     real_provider_id = provider["_id"] if provider else None
     cache_key = _make_hash(text, target_lang, real_provider_id, user_id)
 

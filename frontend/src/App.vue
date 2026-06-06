@@ -10,6 +10,7 @@
         <nav>
           <RouterLink :to="{ name: 'dashboard' }">论文管理</RouterLink>
           <RouterLink :to="{ name: 'citations' }">引用助手</RouterLink>
+          <RouterLink :to="{ name: 'academic-ai' }">学术 AI</RouterLink>
         </nav>
 
         <div class="user-entry-wrap" ref="menuRootRef">
