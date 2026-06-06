@@ -467,12 +467,62 @@ def _load_user_papers(db, user_id: ObjectId, paper_ids: list) -> list[dict]:
     return [by_id[paper_oid] for paper_oid in parsed_ids]
 
 
+def _legacy_messages_from_run(run: dict) -> list[dict]:
+    if not run:
+        return []
+    task = run.get("task") or "custom_qa"
+    label = ACADEMIC_TASKS.get(task, {}).get("label") or "学术 AI"
+    created_at = run.get("created_at")
+    user_prompt = run.get("user_prompt") or run.get("query") or label
+    messages = []
+    if user_prompt:
+        messages.append(
+            {
+                "role": "user",
+                "label": label,
+                "content": user_prompt,
+                "task": task,
+                "query": run.get("query") or "",
+                "paper_ids": run.get("paper_ids") or [],
+                "created_at": created_at,
+            }
+        )
+    if run.get("answer"):
+        messages.append(
+            {
+                "role": "assistant",
+                "label": label,
+                "content": run.get("answer") or "",
+                "task": task,
+                "query": run.get("query") or "",
+                "paper_ids": run.get("paper_ids") or [],
+                "sources": run.get("sources") or [],
+                "suggested_questions": run.get("suggested_questions") or [],
+                "created_at": created_at,
+            }
+        )
+    return messages
+
+
+def _conversation_excerpt(messages: list[dict], max_turns: int = 8) -> str:
+    if not messages:
+        return ""
+    lines = []
+    for message in messages[-max_turns:]:
+        role = "用户" if message.get("role") == "user" else "助手"
+        content = _truncate(str(message.get("content") or ""), 900)
+        if content:
+            lines.append(f"{role}: {content}")
+    return "\n\n".join(lines)
+
+
 def run_academic_task(db, user_id: ObjectId, payload: dict, upload_root: str) -> dict:
     task = str(payload.get("task") or "").strip()
     paper_ids = payload.get("paper_ids") or []
     query = str(payload.get("query") or "").strip()
     provider_id = payload.get("provider_id") or None
     user_prompt = str(payload.get("user_prompt") or "").strip()
+    conversation_id = payload.get("conversation_id") or payload.get("run_id") or None
     target_lang = str(payload.get("target_lang") or "zh-CN").strip() or "zh-CN"
     context_options = payload.get("context_options") or {}
 
@@ -481,6 +531,19 @@ def run_academic_task(db, user_id: ObjectId, payload: dict, upload_root: str) ->
     provider = pick_provider(db, user_id, provider_id)
     if not provider:
         raise AcademicAgentError("Please configure an LLM provider first.", 400)
+
+    conversation = None
+    previous_messages = []
+    if conversation_id:
+        conversation_oid = parse_object_id(str(conversation_id))
+        if not conversation_oid:
+            raise AcademicAgentError("conversation_id is invalid", 400)
+        conversation = db.ai_runs.find_one({"_id": conversation_oid, "user_id": user_id})
+        if not conversation:
+            raise AcademicAgentError("conversation not found", 404)
+        previous_messages = conversation.get("messages")
+        if not isinstance(previous_messages, list):
+            previous_messages = _legacy_messages_from_run(conversation)
 
     papers = _load_user_papers(db, user_id, paper_ids)
     per_paper_limit = 8000 if task == "paper_compare" else 14000
@@ -501,30 +564,91 @@ def run_academic_task(db, user_id: ObjectId, payload: dict, upload_root: str) ->
 
     papers_context = "\n\n".join(contexts)
     messages = build_messages(task, query, papers_context, target_lang)
+    previous_excerpt = _conversation_excerpt(previous_messages)
+    if previous_excerpt and messages:
+        messages[-1]["content"] = (
+            "以下是当前会话的近期历史。请保持连续对话语境，但仍以本轮用户请求为主。\n"
+            f"{previous_excerpt}\n\n"
+            f"当前轮次：\n{messages[-1]['content']}"
+        )
     answer = call_chat_completion(provider, messages, temperature=0.2, timeout=60)
     suggested_questions = SUGGESTED_QUESTIONS.get(task, SUGGESTED_QUESTIONS["custom_qa"])
-    run_title = generate_run_title(provider, task, user_prompt or query, answer, sources)
 
     now = datetime.now(UTC)
-    run_doc = {
-        "user_id": user_id,
-        "paper_ids": [paper["_id"] for paper in papers],
+    task_label = ACADEMIC_TASKS.get(task, {}).get("label") or "学术 AI"
+    paper_oids = [paper["_id"] for paper in papers]
+    user_message = {
+        "role": "user",
+        "label": task_label,
+        "content": user_prompt or query,
         "task": task,
         "query": query,
-        "user_prompt": user_prompt,
-        "title": run_title,
-        "provider_id": provider.get("_id"),
-        "answer": answer,
+        "paper_ids": paper_oids,
+        "created_at": now,
+    }
+    assistant_message = {
+        "role": "assistant",
+        "label": task_label,
+        "content": answer,
+        "task": task,
+        "query": query,
+        "paper_ids": paper_oids,
         "sources": sources,
         "suggested_questions": suggested_questions,
         "created_at": now,
-        "updated_at": now,
     }
-    inserted = db.ai_runs.insert_one(run_doc)
+
+    if conversation:
+        existing_title = str(conversation.get("title") or "").strip()
+        if existing_title and existing_title != "新对话":
+            run_title = existing_title
+        else:
+            run_title = generate_run_title(provider, task, user_prompt or query, answer, sources)
+        next_messages = [*previous_messages, user_message, assistant_message]
+        db.ai_runs.update_one(
+            {"_id": conversation["_id"], "user_id": user_id},
+            {
+                "$set": {
+                    "paper_ids": paper_oids,
+                    "task": task,
+                    "query": query,
+                    "user_prompt": user_prompt,
+                    "title": run_title,
+                    "provider_id": provider.get("_id"),
+                    "answer": answer,
+                    "sources": sources,
+                    "suggested_questions": suggested_questions,
+                    "messages": next_messages,
+                    "updated_at": now,
+                }
+            },
+        )
+        run_id = conversation["_id"]
+    else:
+        run_title = generate_run_title(provider, task, user_prompt or query, answer, sources)
+        next_messages = [user_message, assistant_message]
+        run_doc = {
+            "user_id": user_id,
+            "paper_ids": paper_oids,
+            "task": task,
+            "query": query,
+            "user_prompt": user_prompt,
+            "title": run_title,
+            "provider_id": provider.get("_id"),
+            "answer": answer,
+            "sources": sources,
+            "suggested_questions": suggested_questions,
+            "messages": next_messages,
+            "archived": False,
+            "created_at": now,
+            "updated_at": now,
+        }
+        inserted = db.ai_runs.insert_one(run_doc)
+        run_id = inserted.inserted_id
 
     return {
         "ok": True,
-        "run_id": str(inserted.inserted_id),
+        "run_id": str(run_id),
         "title": run_title,
         "user_prompt": user_prompt,
         "task": task,

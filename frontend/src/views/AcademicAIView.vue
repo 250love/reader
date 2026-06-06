@@ -142,10 +142,14 @@
         <div class="section-title-row drawer-hero-card">
           <div>
             <h4>历史结果</h4>
-            <p>最近生成的 AI 回答，可一键回显到主对话区。</p>
+            <p>像 ChatGPT 一样切换和管理持续对话。</p>
           </div>
           <span class="hero-badge">{{ visibleAgentRuns.length }} 条</span>
         </div>
+
+        <button class="archive-open-btn" @click="openArchivedDialog">
+          查看已归档对话
+        </button>
 
         <div v-if="loadingRuns" class="placeholder-card">
           <strong>正在加载历史记录...</strong>
@@ -163,7 +167,7 @@
             :key="run.id"
             :class="['history-preview-card', 'run-card', { active: run.id === currentRunId, pending: run.pending }]"
             @click="restoreRun(run)"
-            @contextmenu.prevent.stop="openRunMenu($event, run)"
+            @contextmenu.prevent.stop="openRunMenu($event, run, 'active')"
           >
             <div>
               <strong>{{ runTitle(run) }}</strong>
@@ -180,8 +184,9 @@
           :style="{ left: `${runMenu.x}px`, top: `${runMenu.y}px` }"
           @click.stop
         >
-          <button @click="renameRunFromMenu">重命名</button>
-          <button @click="archiveRunFromMenu">归档</button>
+          <button v-if="runMenu.scope === 'active'" @click="renameRunFromMenu">重命名</button>
+          <button v-if="runMenu.scope === 'active'" @click="archiveRunFromMenu">归档</button>
+          <button v-if="runMenu.scope === 'archived'" @click="restoreArchivedRunFromMenu">还原</button>
           <button class="danger" @click="deleteRunFromMenu">删除</button>
         </section>
       </section>
@@ -286,6 +291,40 @@
         </div>
       </footer>
     </main>
+
+    <section v-if="archivedDialogOpen" class="archive-dialog-backdrop" @click.self="closeArchivedDialog">
+      <div class="archive-dialog">
+        <header>
+          <div>
+            <p class="brand-kicker">Archived Chats</p>
+            <h3>已归档对话</h3>
+          </div>
+          <button class="drawer-close" @click="closeArchivedDialog">×</button>
+        </header>
+
+        <p v-if="loadingArchivedRuns" class="muted-text">正在加载已归档对话...</p>
+        <p v-else-if="archivedRunsError" class="error-text">{{ archivedRunsError }}</p>
+        <div v-else-if="archivedRuns.length === 0" class="placeholder-card">
+          <strong>暂无归档对话</strong>
+          <p>在历史卡片上右键选择“归档”后，会出现在这里。</p>
+        </div>
+
+        <div v-else class="archive-card-list compact-scroll">
+          <article
+            v-for="run in archivedRuns"
+            :key="run.id"
+            class="history-preview-card run-card"
+            @contextmenu.prevent.stop="openRunMenu($event, run, 'archived')"
+          >
+            <div>
+              <strong>{{ runTitle(run) }}</strong>
+              <p>{{ runSubtitle(run) }}</p>
+              <small>{{ formatDateTime(run.updated_at || run.created_at) }}</small>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
   </section>
 </template>
 
@@ -296,6 +335,7 @@ import { useRoute } from "vue-router";
 import {
   deleteAgentRun,
   fetchAgentTasks,
+  fetchAgentRun,
   fetchAgentRuns,
   fetchPapers,
   fetchProviders,
@@ -328,11 +368,16 @@ const drawerCollapsed = ref(false);
 const messageListRef = ref(null);
 const loadingRuns = ref(false);
 const runsError = ref("");
+const archivedDialogOpen = ref(false);
+const archivedRuns = ref([]);
+const loadingArchivedRuns = ref(false);
+const archivedRunsError = ref("");
 const runMenu = reactive({
   open: false,
   x: 0,
   y: 0,
-  runId: ""
+  runId: "",
+  scope: "active"
 });
 
 const contextOptions = reactive({
@@ -470,6 +515,29 @@ async function loadAgentRuns() {
   } finally {
     loadingRuns.value = false;
   }
+}
+
+async function loadArchivedRuns() {
+  loadingArchivedRuns.value = true;
+  archivedRunsError.value = "";
+  try {
+    archivedRuns.value = await fetchAgentRuns({ limit: 100, archived: true });
+  } catch (error) {
+    archivedRunsError.value = error?.response?.data?.error || "已归档对话加载失败。";
+  } finally {
+    loadingArchivedRuns.value = false;
+  }
+}
+
+async function openArchivedDialog() {
+  closeRunMenu();
+  archivedDialogOpen.value = true;
+  await loadArchivedRuns();
+}
+
+function closeArchivedDialog() {
+  archivedDialogOpen.value = false;
+  closeRunMenu();
 }
 
 function applyQueryDefaults() {
@@ -766,12 +834,14 @@ async function runTask(taskKey, options = {}) {
   const userPrompt = options.regenerate
     ? `重新生成：${buildUserPrompt(taskKey, queryText)}`
     : buildUserPrompt(taskKey, queryText);
-  const draftTitle = "新对话";
+  const conversationId = currentRunId.value || "";
+  const draftTitle = conversationId ? conversationTitle.value : "新对话";
   const payload = {
     task: taskKey,
     paper_ids: [...selectedPaperIds.value],
     query: queryText,
     user_prompt: userPrompt,
+    conversation_id: conversationId || undefined,
     provider_id: selectedProviderId.value || undefined,
     target_lang: targetLang.value,
     context_options: { ...contextOptions }
@@ -792,10 +862,12 @@ async function runTask(taskKey, options = {}) {
     customQuery.value = "";
   }
   messages.value.push(userMessage, assistantMessage);
-  currentRunId.value = "";
+  if (!conversationId) {
+    currentRunId.value = "";
+  }
   currentConversationTitle.value = draftTitle;
   currentRunDraft.value = {
-    id: "__current_pending",
+    id: conversationId || "__current_pending",
     task: taskKey,
     title: draftTitle,
     user_prompt: userPrompt,
@@ -816,7 +888,7 @@ async function runTask(taskKey, options = {}) {
       sources: result.sources || [],
       suggestedQuestions: result.suggested_questions || [],
       runId: result.run_id || "",
-      payload
+      payload: { ...payload, conversation_id: result.run_id || conversationId || undefined }
     });
     const nextTitle = result.title || buildConversationTitle(taskKey, userPrompt, result.sources || []);
     currentRunId.value = result.run_id || "";
@@ -830,7 +902,8 @@ async function runTask(taskKey, options = {}) {
           query: queryText,
           paper_ids: [...selectedPaperIds.value],
           sources: result.sources || [],
-          created_at: new Date().toISOString(),
+          created_at: currentRunDraft.value?.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
           pending: false
         }
       : null;
@@ -900,6 +973,10 @@ function runSubtitle(run) {
   if (run.pending) return "正在生成回答...";
   if (run.user_prompt) return truncateText(run.user_prompt, 46);
   if (run.query) return truncateText(run.query, 46);
+  if (Array.isArray(run.messages) && run.messages.length > 0) {
+    const lastUser = [...run.messages].reverse().find((message) => message.role === "user");
+    if (lastUser?.content) return truncateText(lastUser.content, 46);
+  }
   const count = Array.isArray(run.paper_ids) ? run.paper_ids.length : 0;
   if (count > 0) return `${count} 篇论文上下文 · 点击回显回答`;
   return "未选择论文上下文 · 点击回显回答";
@@ -926,12 +1003,13 @@ function patchRunInList(runId, patch) {
   }
 }
 
-function openRunMenu(event, run) {
+function openRunMenu(event, run, scope = "active") {
   if (!run || run.pending) return;
   runMenu.open = true;
   runMenu.x = event.clientX;
   runMenu.y = event.clientY;
   runMenu.runId = run.id || "";
+  runMenu.scope = scope;
 }
 
 function closeRunMenu() {
@@ -939,7 +1017,58 @@ function closeRunMenu() {
 }
 
 function selectedMenuRun() {
-  return visibleAgentRuns.value.find((run) => run.id === runMenu.runId);
+  const list = runMenu.scope === "archived" ? archivedRuns.value : visibleAgentRuns.value;
+  return list.find((run) => run.id === runMenu.runId);
+}
+
+function payloadFromMessage(message, run) {
+  return {
+    task: message.task || run.task || "custom_qa",
+    paper_ids: (message.paper_ids || run.paper_ids || []).map(String),
+    query: message.query || run.query || "",
+    user_prompt: message.content || run.user_prompt || "",
+    conversation_id: run.id,
+    provider_id: run.provider_id || undefined,
+    target_lang: targetLang.value,
+    context_options: { ...contextOptions }
+  };
+}
+
+function messagesFromRun(run) {
+  const stored = Array.isArray(run.messages) ? run.messages : [];
+  const sourceMessages = stored.length
+    ? stored
+    : [
+        {
+          role: "user",
+          label: taskLabelMap.value[run.task] || run.task || "学术 AI",
+          content: run.user_prompt || run.query || runTitle(run),
+          task: run.task,
+          query: run.query,
+          paper_ids: run.paper_ids || []
+        },
+        {
+          role: "assistant",
+          label: taskLabelMap.value[run.task] || run.task || "学术 AI",
+          content: run.answer || "",
+          task: run.task,
+          query: run.query,
+          paper_ids: run.paper_ids || [],
+          sources: run.sources || [],
+          suggested_questions: run.suggested_questions || []
+        }
+      ];
+
+  return sourceMessages
+    .filter((message) => message?.content)
+    .map((message) => makeMessage(message.role || "assistant", {
+      label: message.label || taskLabelMap.value[message.task] || "学术 AI",
+      content: message.content || "",
+      sources: message.sources || [],
+      suggestedQuestions: message.suggested_questions || [],
+      runId: run.id || "",
+      payload: message.role === "assistant" ? payloadFromMessage(message, run) : null
+    }));
 }
 
 async function renameRun(run, title) {
@@ -981,12 +1110,35 @@ async function archiveRunFromMenu() {
   }
 }
 
+async function restoreArchivedRunFromMenu() {
+  const run = selectedMenuRun();
+  closeRunMenu();
+  if (!run?.id) return;
+  try {
+    await updateAgentRun(run.id, { archived: false });
+    archivedRuns.value = archivedRuns.value.filter((item) => item.id !== run.id);
+    await loadAgentRuns();
+  } catch (error) {
+    noticeMessage.value = error?.response?.data?.error || "还原失败。";
+  }
+}
+
 async function deleteRunFromMenu() {
   const run = selectedMenuRun();
+  const scope = runMenu.scope;
   closeRunMenu();
   if (!run?.id) return;
   const ok = window.confirm(`确认删除「${runTitle(run)}」吗？`);
   if (!ok) return;
+  if (scope === "archived") {
+    try {
+      await deleteAgentRun(run.id);
+      archivedRuns.value = archivedRuns.value.filter((item) => item.id !== run.id);
+    } catch (error) {
+      noticeMessage.value = error?.response?.data?.error || "删除历史记录失败。";
+    }
+    return;
+  }
   await removeRun(run.id);
 }
 
@@ -1015,39 +1167,21 @@ async function renameCurrentConversation() {
 async function restoreRun(run) {
   if (!run || run.pending) return;
   closeRunMenu();
-  selectedTask.value = run.task || selectedTask.value;
-  selectedPaperIds.value = Array.isArray(run.paper_ids) ? run.paper_ids.map(String) : [];
-  selectedProviderId.value = run.provider_id || selectedProviderId.value;
-  currentRunId.value = run.id || "";
+  let detail = run;
+  try {
+    detail = await fetchAgentRun(run.id);
+  } catch (error) {
+    noticeMessage.value = error?.response?.data?.error || "对话加载失败。";
+    return;
+  }
+
+  selectedTask.value = detail.task || selectedTask.value;
+  selectedPaperIds.value = Array.isArray(detail.paper_ids) ? detail.paper_ids.map(String) : [];
+  selectedProviderId.value = detail.provider_id || selectedProviderId.value;
+  currentRunId.value = detail.id || "";
   currentRunDraft.value = null;
-  currentConversationTitle.value = runTitle(run);
-
-  const taskLabel = taskLabelMap.value[run.task] || run.task || "学术 AI";
-  const userText = run.user_prompt || run.query || buildConversationTitle(run.task, "", run.sources || []);
-  const payload = {
-    task: run.task,
-    paper_ids: [...selectedPaperIds.value],
-    query: run.query || "",
-    user_prompt: userText,
-    provider_id: run.provider_id || undefined,
-    target_lang: targetLang.value,
-    context_options: { ...contextOptions }
-  };
-
-  messages.value = [
-    makeMessage("user", {
-      label: taskLabel,
-      content: userText
-    }),
-    makeMessage("assistant", {
-      label: taskLabel,
-      content: run.answer || "",
-      sources: run.sources || [],
-      suggestedQuestions: run.suggested_questions || [],
-      payload,
-      runId: run.id || ""
-    })
-  ];
+  currentConversationTitle.value = runTitle(detail);
+  messages.value = messagesFromRun(detail);
   noticeMessage.value = "";
   await scrollToBottom();
 }
@@ -1259,6 +1393,22 @@ onMounted(loadInitialData);
   font-size: 0.78rem;
   font-weight: 800;
   padding: 0.22rem 0.54rem;
+}
+
+.archive-open-btn {
+  justify-self: stretch;
+  border: 1px solid #cbd9e4;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.84);
+  color: #23394b;
+  font-weight: 800;
+  padding: 0.72rem 0.82rem;
+  text-align: left;
+}
+
+.archive-open-btn:hover {
+  background: #eef8f4;
+  border-color: #b8dfd2;
 }
 
 .small-btn {
@@ -1561,6 +1711,52 @@ onMounted(loadInitialData);
 
 .run-context-menu button.danger {
   color: #b63838;
+}
+
+.archive-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 36, 50, 0.22);
+  backdrop-filter: blur(2px);
+}
+
+.archive-dialog {
+  width: min(560px, 92vw);
+  max-height: min(720px, 86vh);
+  border: 1px solid rgba(190, 207, 218, 0.9);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(209, 236, 230, 0.66), transparent 34%),
+    color-mix(in srgb, var(--card), white 30%);
+  box-shadow: 0 24px 60px rgba(20, 36, 50, 0.26);
+  padding: 1rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.85rem;
+}
+
+.archive-dialog header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(200, 214, 224, 0.75);
+  padding-bottom: 0.8rem;
+}
+
+.archive-dialog h3 {
+  margin: 0.15rem 0 0;
+  font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+}
+
+.archive-card-list {
+  display: grid;
+  gap: 0.62rem;
+  overflow-y: auto;
+  padding-right: 0.18rem;
 }
 
 .history-preview-card.muted {

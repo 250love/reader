@@ -68,9 +68,13 @@ def list_agent_runs():
         limit = 100
     limit = max(1, min(limit, 100))
 
+    archived = str(request.args.get("archived") or "").lower() in {"1", "true", "yes"}
+    filters = {"user_id": g.current_user["_id"]}
+    filters["archived"] = True if archived else {"$ne": True}
+
     rows = list(
-        db.ai_runs.find({"user_id": g.current_user["_id"], "archived": {"$ne": True}})
-        .sort("created_at", -1)
+        db.ai_runs.find(filters, {"messages": 0})
+        .sort("updated_at", -1)
         .limit(limit)
     )
     return {"items": [mongo_doc_to_json(row) for row in rows]}
