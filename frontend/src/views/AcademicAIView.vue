@@ -17,20 +17,6 @@
           <span>{{ item.short }}</span>
           <small>{{ item.label }}</small>
         </button>
-
-        <div class="more-wrap">
-          <button :class="{ active: moreMenuOpen }" title="更多工具" @click.stop="toggleMoreMenu">
-            <span>...</span>
-            <small>更多</small>
-          </button>
-
-          <section v-if="moreMenuOpen" class="more-menu" @click.stop>
-            <button v-for="item in moreTools" :key="item.key" :disabled="item.disabled" @click="onMoreTool(item)">
-              <span>{{ item.label }}</span>
-              <small>{{ item.disabled ? "后续开放" : item.hint }}</small>
-            </button>
-          </section>
-        </div>
       </nav>
     </aside>
 
@@ -305,7 +291,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 
 import {
   deleteAgentRun,
@@ -318,7 +304,6 @@ import {
 } from "@/services/api";
 
 const route = useRoute();
-const router = useRouter();
 
 const papers = ref([]);
 const providers = ref([]);
@@ -340,7 +325,6 @@ const currentRunDraft = ref(null);
 const currentConversationTitle = ref("");
 const activeDrawer = ref("context");
 const drawerCollapsed = ref(false);
-const moreMenuOpen = ref(false);
 const messageListRef = ref(null);
 const loadingRuns = ref(false);
 const runsError = ref("");
@@ -363,17 +347,6 @@ const railItems = [
   { key: "tasks", label: "任务", short: "任" },
   { key: "model", label: "模型", short: "模" },
   { key: "history", label: "历史", short: "史" }
-];
-
-const moreTools = [
-  { key: "dashboard", label: "论文管理", hint: "打开文献库", routeName: "dashboard" },
-  { key: "citations", label: "引用助手", hint: "打开引用页", routeName: "citations" },
-  { key: "fulltext", label: "全文搜索", disabled: true },
-  { key: "figures", label: "图表与表格", disabled: true },
-  { key: "essay", label: "随笔", disabled: true },
-  { key: "plan", label: "阅读计划", disabled: true },
-  { key: "theme", label: "主题设置", disabled: true },
-  { key: "help", label: "帮助", disabled: true }
 ];
 
 const taskIconMap = {
@@ -513,22 +486,6 @@ function applyQueryDefaults() {
 function openDrawer(key) {
   activeDrawer.value = key;
   drawerCollapsed.value = false;
-  moreMenuOpen.value = false;
-}
-
-function toggleMoreMenu() {
-  moreMenuOpen.value = !moreMenuOpen.value;
-}
-
-function onMoreTool(item) {
-  if (item.disabled) {
-    noticeMessage.value = `${item.label} 将在后续版本开放。`;
-    moreMenuOpen.value = false;
-    return;
-  }
-  if (item.routeName) {
-    router.push({ name: item.routeName });
-  }
 }
 
 function togglePaper(paperId) {
@@ -1204,37 +1161,6 @@ onMounted(loadInitialData);
 
 .tool-rail small {
   font-size: 0.7rem;
-}
-
-.more-wrap {
-  position: relative;
-}
-
-.more-menu {
-  position: absolute;
-  left: calc(100% + 0.55rem);
-  bottom: 0;
-  z-index: 30;
-  width: 220px;
-  border: 1px solid #d2dde6;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 18px 42px rgba(20, 36, 50, 0.18);
-  padding: 0.45rem;
-}
-
-.more-menu button {
-  min-height: auto;
-  display: grid;
-  justify-items: start;
-  gap: 0.08rem;
-  border-radius: 12px;
-  padding: 0.55rem 0.65rem;
-  text-align: left;
-}
-
-.more-menu button:disabled {
-  opacity: 0.55;
 }
 
 .context-drawer {
